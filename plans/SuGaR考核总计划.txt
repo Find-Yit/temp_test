@@ -63,3 +63,4 @@ opus46-writer 写 report.md → pdf；README 含逐步命令；git init 仓库�
 - [x] 2d README.md 初稿（40KB；10 处【待补】待实验结束回填）
 - 【用户 2026-09-14】报告"失败案例"只写方法/超参层面（τ 剔除率曲线、τ 过小误剔薄结构→孔洞/completeness 下降、τ 过大漏剔漂浮物、不同 k/v 的影响等）；
   代码/工程层面的现象（open3d Poisson 抽简非确定性、-c 尾斜杠、迭代计数语义等）不进报告，只放 README 已知问题。写作者与结果节必须遵守。
+- 【2026-09-14 暂停点】用户要求暂停。GitHub 交付准备子代理（代码改动位置.md / scripts/一键复现/ / README 重组）已被停止，进度以 scripts/一键复现/ 与 notes/SELF_CHECK_GitHub交付.md 是否存在为准；报告 11 页已含图像对比并复制到 考核提交/。未推送。恢复时：让新 opus4.8 从 SELF_CHECK_GitHub交付.md（若无则从头）续做，然后 Fable 验收 → commit → 用户确认署名 → push origin main。

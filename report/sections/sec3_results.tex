@@ -1,45 +1,12 @@
 % sec3_results.tex — 第3节 结果
 \section{结果}
 
-\subsection{实验设置}
-
-为验证第~\ref{subsec:modification}~节所述改动的有效性，设计了以下实验组别：
-
-\begin{table}[H]
-\centering
-\caption{实验组别设置}
-\label{tab:exp-groups}
-\begin{tabular}{llll}
-\toprule
-\textbf{组别}     & \textbf{标识}    & \textbf{核心差异}              & \textbf{说明} \\
-\midrule
-基线               & Baseline         & 原始 SuGaR 提取流程            & 无剔点 \\
-改动（$\tau{=}0.05$）  & Modified-0.05  & 多视角剔点\,$\tau{=}0.05$  & 剔除 25.5\% \\
-改动（$\tau{=}0.02$）  & Modified-0.02  & 多视角剔点\,$\tau{=}0.02$  & 默认值，剔除 44.9\% \\
-改动（$\tau{=}0.01$）  & Modified-0.01  & 多视角剔点\,$\tau{=}0.01$  & 剔除 59.2\% \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-所有组别共享同一 3DGS 预训练检查点（7{,}000 迭代、\texttt{seed}=0）、
-相同的 Coarse SuGaR 权重（\texttt{num\_iterations}=15{,}000）以及相同的
-测试视角划分（\texttt{llffhold}=8，32 个测试视角）。
-改动仅作用于 Mesh 提取阶段，不影响 3DGS 与 Coarse SuGaR 的训练过程。
-
-\textbf{评价指标}包括五个维度：
-\begin{itemize}[nosep]
-  \item 渲染质量：测试视角 PSNR / SSIM / LPIPS（\S\ref{ssec:baseline-render}）；
-  \item 几何精度：双参考 Accuracy / Completeness / Chamfer / F-score（\S\ref{ssec:baseline-geo}）；
-  \item 拓扑质量：连通分量数、水密性、孔洞数等（\S\ref{ssec:baseline-topo}）；
-  \item 覆盖度：网格渲染覆盖率与前景漏洞率（\S\ref{ssec:baseline-topo}）；
-  \item 效率：各阶段墙钟时间、峰值显存与文件体积（\S\ref{ssec:baseline-topo}）。
-\end{itemize}
-
 % =====================================================================
 \subsection{定量结果}
 \label{ssec:baseline-results}
 
-以下报告全部实验组别在 truck 场景上的定量结果。
+所有组别共享同一 Coarse SuGaR 模型，改动仅作用于 Mesh 提取阶段。
+消融实验扫描三个深度容差值：$\tau \in \{0.05,\, 0.02,\, 0.01\}$。
 
 % ---------- 渲染指标 ----------
 \subsubsection{渲染指标}
@@ -60,8 +27,8 @@
                & \textbf{SSIM $\uparrow$}
                & \textbf{LPIPS $\downarrow$} \\
 \midrule
-3DGS（7k 迭代）   & 23.92 & 0.849 & 0.202 \\
-Coarse SuGaR       & 24.32 & 0.848 & 0.217 \\
+3DGS（7k 迭代）   & 23.92 & \textbf{0.849} & \textbf{0.202} \\
+Coarse SuGaR       & \textbf{24.32} & 0.848 & 0.217 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -84,19 +51,19 @@ $\tau$ 越小，剔点越激进，几何精度（Chamfer / Completeness / F-scor
 \toprule
 \textbf{指标} & \textbf{基线} & $\tau{=}0.05$ & $\tau{=}0.02$ & $\tau{=}0.01$ \\
 \midrule
-Chamfer L1 $\downarrow$          & 0.0326 & 0.0287 & 0.0242 & 0.0230 \\
+Chamfer L1 $\downarrow$          & 0.0326 & 0.0287 & 0.0242 & \textbf{0.0230} \\
 \addlinespace
-Accuracy 均值 $\downarrow$       & 0.0156 & 0.0184 & 0.0198 & 0.0220 \\
-Accuracy 中位 $\downarrow$       & 0.0098 & 0.0103 & 0.0105 & 0.0110 \\
-Accuracy P90 $\downarrow$        & 0.0291 & 0.0327 & 0.0343 & 0.0366 \\
+Accuracy 均值 $\downarrow$       & \textbf{0.0156} & 0.0184 & 0.0198 & 0.0220 \\
+Accuracy 中位 $\downarrow$       & \textbf{0.0098} & 0.0103 & 0.0105 & 0.0110 \\
+Accuracy P90 $\downarrow$        & \textbf{0.0291} & 0.0327 & 0.0343 & 0.0366 \\
 \addlinespace
-Completeness 均值 $\downarrow$   & 0.0495 & 0.0389 & 0.0286 & 0.0241 \\
-Completeness 中位 $\downarrow$   & 0.0233 & 0.0183 & 0.0148 & 0.0138 \\
-Completeness P90 $\downarrow$    & 0.1317 & 0.0995 & 0.0593 & 0.0490 \\
+Completeness 均值 $\downarrow$   & 0.0495 & 0.0389 & 0.0286 & \textbf{0.0241} \\
+Completeness 中位 $\downarrow$   & 0.0233 & 0.0183 & 0.0148 & \textbf{0.0138} \\
+Completeness P90 $\downarrow$    & 0.1317 & 0.0995 & 0.0593 & \textbf{0.0490} \\
 \addlinespace
-F@0.5\% $\uparrow$              & 0.864 & 0.902 & 0.940 & 0.952 \\
-F@1\% $\uparrow$                & 0.946 & 0.961 & 0.976 & 0.982 \\
-F@2\% $\uparrow$                & 0.990 & 0.993 & 0.994 & 0.995 \\
+F@0.5\% $\uparrow$              & 0.864 & 0.902 & 0.940 & \textbf{0.952} \\
+F@1\% $\uparrow$                & 0.946 & 0.961 & 0.976 & \textbf{0.982} \\
+F@2\% $\uparrow$                & 0.990 & 0.993 & 0.994 & \textbf{0.995} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -109,19 +76,19 @@ F@2\% $\uparrow$                & 0.990 & 0.993 & 0.994 & 0.995 \\
 \toprule
 \textbf{指标} & \textbf{基线} & $\tau{=}0.05$ & $\tau{=}0.02$ & $\tau{=}0.01$ \\
 \midrule
-Chamfer L1 $\downarrow$          & 0.0531 & 0.0455 & 0.0390 & 0.0361 \\
+Chamfer L1 $\downarrow$          & 0.0531 & 0.0455 & 0.0390 & \textbf{0.0361} \\
 \addlinespace
-Accuracy 均值 $\downarrow$       & 0.0242 & 0.0262 & 0.0279 & 0.0303 \\
-Accuracy 中位 $\downarrow$       & 0.0033 & 0.0035 & 0.0036 & 0.0037 \\
-Accuracy P90 $\downarrow$        & 0.0200 & 0.0239 & 0.0258 & 0.0287 \\
+Accuracy 均值 $\downarrow$       & \textbf{0.0242} & 0.0262 & 0.0279 & 0.0303 \\
+Accuracy 中位 $\downarrow$       & \textbf{0.0033} & 0.0035 & 0.0036 & 0.0037 \\
+Accuracy P90 $\downarrow$        & \textbf{0.0200} & 0.0239 & 0.0258 & 0.0287 \\
 \addlinespace
-Completeness 均值 $\downarrow$   & 0.0819 & 0.0648 & 0.0500 & 0.0419 \\
-Completeness 中位 $\downarrow$   & 0.0480 & 0.0387 & 0.0307 & 0.0271 \\
-Completeness P90 $\downarrow$    & 0.2005 & 0.1530 & 0.1044 & 0.0853 \\
+Completeness 均值 $\downarrow$   & 0.0819 & 0.0648 & 0.0500 & \textbf{0.0419} \\
+Completeness 中位 $\downarrow$   & 0.0480 & 0.0387 & 0.0307 & \textbf{0.0271} \\
+Completeness P90 $\downarrow$    & 0.2005 & 0.1530 & 0.1044 & \textbf{0.0853} \\
 \addlinespace
-F@0.5\% $\uparrow$              & 0.751 & 0.807 & 0.862 & 0.885 \\
-F@1\% $\uparrow$                & 0.888 & 0.920 & 0.949 & 0.963 \\
-F@2\% $\uparrow$                & 0.963 & 0.973 & 0.979 & 0.982 \\
+F@0.5\% $\uparrow$              & 0.751 & 0.807 & 0.862 & \textbf{0.885} \\
+F@1\% $\uparrow$                & 0.888 & 0.920 & 0.949 & \textbf{0.963} \\
+F@2\% $\uparrow$                & 0.963 & 0.973 & 0.979 & \textbf{0.982} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -141,35 +108,34 @@ F@2\% $\uparrow$                & 0.963 & 0.973 & 0.979 & 0.982 \\
 \textbf{类别} & \textbf{指标}
   & \textbf{基线} & $\tau{=}0.05$ & $\tau{=}0.02$ & $\tau{=}0.01$ \\
 \midrule
+剔点 & 剔除率               & ---       & 25.5\%    & 44.9\%    & 59.2\% \\
+\midrule
 \multirow{7}{*}{拓扑}
   & 顶点数 $V$           & 746{,}704
                                       & 665{,}745 & 574{,}239 & 455{,}839 \\
   & 面数 $F$             & 1{,}437{,}272
                                       & 1{,}295{,}321 & 1{,}121{,}525 & 890{,}054 \\
-  & 连通分量数           & 4{,}851   & 3{,}279   & 2{,}690   & 2{,}261 \\
-  & 最大分量面数占比     & 49.5\%    & 58.1\%    & 48.8\%    & 47.3\% \\
-  & 边界边数             & 96{,}544  & 68{,}205  & 54{,}647  & 44{,}848 \\
-  & 孔洞数（边界环）     & 7{,}970   & 6{,}206   & 5{,}480   & 4{,}598 \\
+  & 连通分量数           & 4{,}851   & 3{,}279   & 2{,}690   & \textbf{2{,}261} \\
+  & 最大分量面数占比     & 49.5\%    & \textbf{58.1\%}    & 48.8\%    & 47.3\% \\
+  & 边界边数             & 96{,}544  & 68{,}205  & 54{,}647  & \textbf{44{,}848} \\
+  & 孔洞数（边界环）     & 7{,}970   & 6{,}206   & 5{,}480   & \textbf{4{,}598} \\
   & 水密                 & 否         & 否         & 否         & 否 \\
 \midrule
 \multirow{2}{*}{覆盖}
-  & 网格覆盖率 $\uparrow$    & 92.9\% & 81.5\% & 71.0\% & 63.3\% \\
-  & 前景漏洞率 $\downarrow$  & 6.7\%  & 18.0\% & 28.6\% & 36.3\% \\
+  & 网格覆盖率 $\uparrow$    & \textbf{92.9\%} & 81.5\% & 71.0\% & 63.3\% \\
+  & 前景漏洞率 $\downarrow$  & \textbf{6.7\%}  & 18.0\% & 28.6\% & 36.3\% \\
 \midrule
 \multirow{6}{*}{效率}
   & 3DGS 训练            & 1.98\,min
                                       & \multicolumn{3}{c}{（共享）} \\
   & Coarse SuGaR 训练    & 15.84\,min
                                       & \multicolumn{3}{c}{（共享）} \\
-  & Mesh 提取            & 5.98\,min & 4.79\,min & 4.30\,min & 3.91\,min \\
-  & \textbf{总墙钟}      & \textbf{23.81\,min}
-                                      & \textbf{22.62\,min}
-                                      & \textbf{22.13\,min}
-                                      & \textbf{21.74\,min} \\
+  & Mesh 提取            & 5.98\,min & 4.79\,min & 4.30\,min & \textbf{3.91\,min} \\
+  & 总墙钟               & 23.81\,min & 22.62\,min & 22.13\,min & \textbf{21.74\,min} \\
   & 峰值显存（进程组）   & 10{,}098\,MiB
-                                      & 8{,}274\,MiB & 8{,}274\,MiB & 8{,}274\,MiB \\
+                                      & \textbf{8{,}274\,MiB} & \textbf{8{,}274\,MiB} & \textbf{8{,}274\,MiB} \\
   & 网格文件体积         & 54.34\,MiB
-                                      & 48.56\,MiB & 41.94\,MiB & 33.29\,MiB \\
+                                      & 48.56\,MiB & 41.94\,MiB & \textbf{33.29\,MiB} \\
 \bottomrule
 \end{tabular}
 \begin{flushleft}
@@ -181,43 +147,6 @@ F@2\% $\uparrow$                & 0.963 & 0.973 & 0.979 & 0.982 \\
 % ---------- 可视化 ----------
 \subsubsection{可视化}
 \label{ssec:baseline-vis}
-
-图~\ref{fig:baseline-vis} 展示了基线提取网格的四个可视化视角。
-
-\begin{figure}[htbp]
-  \centering
-  \begin{subfigure}[b]{0.48\textwidth}
-    \includegraphics[width=\textwidth]{figures/网格截图_基线.png}
-    \caption{提取网格整体视图}
-    \label{fig:baseline-mesh}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[b]{0.48\textwidth}
-    \includegraphics[width=\textwidth]{figures/连通分量着色_基线.png}
-    \caption{连通分量着色（不同颜色代表不同分量）}
-    \label{fig:baseline-components}
-  \end{subfigure}
-
-  \vspace{0.5em}
-
-  \begin{subfigure}[b]{0.48\textwidth}
-    \includegraphics[width=\textwidth]{figures/误差热图_基线.png}
-    \caption{几何误差热图}
-    \label{fig:baseline-error}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[b]{0.48\textwidth}
-    \includegraphics[width=\textwidth]{figures/渲染对比_基线_视角000_000001.png}
-    \caption{测试视角渲染效果（视角~0）}
-    \label{fig:baseline-render}
-  \end{subfigure}
-  \caption{基线 SuGaR Mesh 提取可视化（truck 场景）。
-  (a) 整体网格；
-  (b) 4{,}851 个连通分量以颜色区分，可见大量小碎片散布于主体之外；
-  (c) 到参考点云的距离误差热图；
-  (d) 从测试视角的渲染结果与真值对比。}
-  \label{fig:baseline-vis}
-\end{figure}
 
 图~\ref{fig:heatmap-comparison} 以统一色标展示了基线与改动（$\tau{=}0.02$）
 的几何误差热图对比。
@@ -250,11 +179,107 @@ F@2\% $\uparrow$                & 0.963 & 0.973 & 0.979 & 0.982 \\
   \end{figure}
 }{}
 
+% ---------- 图像层面 基线 vs 改动对比图组 ----------
+
+% (a) 网格渲染 俯视
+\begin{figure}[htbp]
+  \centering
+  \makebox[0.24\textwidth]{\small 基线}\hfill
+  \makebox[0.24\textwidth]{\small $\tau{=}0.05$}\hfill
+  \makebox[0.24\textwidth]{\small $\tau{=}0.02$}\hfill
+  \makebox[0.24\textwidth]{\small $\tau{=}0.01$}\\[2pt]
+  \includegraphics[width=0.24\textwidth]{figures/对比图/网格渲染_基线_视角2_俯视.png}\hfill
+  \includegraphics[width=0.24\textwidth]{figures/对比图/网格渲染_改动_τ0.05_视角2_俯视.png}\hfill
+  \includegraphics[width=0.24\textwidth]{figures/对比图/网格渲染_改动_τ0.02_视角2_俯视.png}\hfill
+  \includegraphics[width=0.24\textwidth]{figures/对比图/网格渲染_改动_τ0.01_视角2_俯视.png}
+  \caption{网格渲染俯视对比。
+    随 $\tau$ 减小，车体周围与地面上的漂浮碎块逐步被去除，
+    $\tau{=}0.01$ 时车底与远景明显变干净。}
+  \label{fig:mesh-render-topdown}
+\end{figure}
+
+% (b) 连通分量着色 俯视
+\begin{figure}[htbp]
+  \centering
+  \makebox[0.24\textwidth]{\small 基线}\hfill
+  \makebox[0.24\textwidth]{\small $\tau{=}0.05$}\hfill
+  \makebox[0.24\textwidth]{\small $\tau{=}0.02$}\hfill
+  \makebox[0.24\textwidth]{\small $\tau{=}0.01$}\\[2pt]
+  \includegraphics[width=0.24\textwidth]{figures/对比图/连通分量着色_基线_视角2_俯视.png}\hfill
+  \includegraphics[width=0.24\textwidth]{figures/对比图/连通分量着色_改动_τ0.05_视角2_俯视.png}\hfill
+  \includegraphics[width=0.24\textwidth]{figures/对比图/连通分量着色_改动_τ0.02_视角2_俯视.png}\hfill
+  \includegraphics[width=0.24\textwidth]{figures/对比图/连通分量着色_改动_τ0.01_视角2_俯视.png}
+  \caption{连通分量着色俯视对比（最大分量灰色，其余彩色 = 漂浮碎块）。
+    彩色区域随剔点增强而显著减少：
+    全网格连通分量数从基线~4{,}851 降至
+    $\tau{=}0.05$ 时~3{,}279、$\tau{=}0.02$ 时~2{,}690、$\tau{=}0.01$ 时~2{,}261。}
+  \label{fig:cc-topdown}
+\end{figure}
+
+% (c) 点到面误差热图 俯视
+\begin{figure}[htbp]
+  \centering
+  \makebox[0.24\textwidth]{\small 基线}\hfill
+  \makebox[0.24\textwidth]{\small $\tau{=}0.05$}\hfill
+  \makebox[0.24\textwidth]{\small $\tau{=}0.02$}\hfill
+  \makebox[0.24\textwidth]{\small $\tau{=}0.01$}\\[2pt]
+  \includegraphics[width=0.24\textwidth]{figures/对比图/点到面误差热图_基线_视角2_俯视.png}\hfill
+  \includegraphics[width=0.24\textwidth]{figures/对比图/点到面误差热图_改动_τ0.05_视角2_俯视.png}\hfill
+  \includegraphics[width=0.24\textwidth]{figures/对比图/点到面误差热图_改动_τ0.02_视角2_俯视.png}\hfill
+  \includegraphics[width=0.24\textwidth]{figures/对比图/点到面误差热图_改动_τ0.01_视角2_俯视.png}
+  \caption{点到面误差热图俯视对比（统一色标 turbo，$0$--$0.147$；
+    蓝 = 贴合参考、红 = 远离参考）。
+    基线外围大面积饱和红色（背景壳）在 $\tau{=}0.01$ 时被大幅消除，
+    $\mathrm{Chamfer}_A$ 从~0.0326 降至~0.0230。}
+  \label{fig:heatmap-topdown}
+\end{figure}
+
+% (d) 局部放大：地下反射漂浮层 + 背景壳右后角
+\begin{figure}[htbp]
+  \centering
+  % 列标题
+  \makebox[0.24\textwidth]{\small 基线}\hfill
+  \makebox[0.24\textwidth]{\small $\tau{=}0.05$}\hfill
+  \makebox[0.24\textwidth]{\small $\tau{=}0.02$}\hfill
+  \makebox[0.24\textwidth]{\small $\tau{=}0.01$}\\[2pt]
+  % 上行：地下反射漂浮层
+  \includegraphics[width=0.24\textwidth]{figures/对比图/局部放大_地下反射漂浮层_基线.png}\hfill
+  \includegraphics[width=0.24\textwidth]{figures/对比图/局部放大_地下反射漂浮层_改动_τ0.05.png}\hfill
+  \includegraphics[width=0.24\textwidth]{figures/对比图/局部放大_地下反射漂浮层_改动_τ0.02.png}\hfill
+  \includegraphics[width=0.24\textwidth]{figures/对比图/局部放大_地下反射漂浮层_改动_τ0.01.png}\\[4pt]
+  % 下行：背景壳右后角
+  \includegraphics[width=0.24\textwidth]{figures/对比图/局部放大_背景壳右后角_基线.png}\hfill
+  \includegraphics[width=0.24\textwidth]{figures/对比图/局部放大_背景壳右后角_改动_τ0.05.png}\hfill
+  \includegraphics[width=0.24\textwidth]{figures/对比图/局部放大_背景壳右后角_改动_τ0.02.png}\hfill
+  \includegraphics[width=0.24\textwidth]{figures/对比图/局部放大_背景壳右后角_改动_τ0.01.png}
+  \caption{局部放大对比（同一裁剪框、同一视角）。
+    上行：「地下反射漂浮层」区域，框内面数从基线~381{,}711
+    减至 $\tau{=}0.01$ 时~172{,}112（减少~54.9\%）；
+    下行：「背景壳右后角」区域，从~54{,}487
+    减至~24{,}663（减少~54.7\%）。}
+  \label{fig:local-zoom}
+\end{figure}
+
+% (e) 表面点云剔点前后
+\begin{figure}[htbp]
+  \centering
+  \makebox[0.32\textwidth]{\small $\tau{=}0.05$（剔~25.5\%）}\hfill
+  \makebox[0.32\textwidth]{\small $\tau{=}0.02$（剔~44.9\%）}\hfill
+  \makebox[0.32\textwidth]{\small $\tau{=}0.01$（剔~59.2\%）}\\[2pt]
+  \includegraphics[width=0.32\textwidth]{figures/对比图/表面点云_剔点前后_改动_τ0.05_视角2_俯视.png}\hfill
+  \includegraphics[width=0.32\textwidth]{figures/对比图/表面点云_剔点前后_改动_τ0.02_视角2_俯视.png}\hfill
+  \includegraphics[width=0.32\textwidth]{figures/对比图/表面点云_剔点前后_改动_τ0.01_视角2_俯视.png}
+  \caption{表面点云剔点前后俯视对比（红 = 被剔除、灰 = 保留）。
+    外圈背景壳与地下反射层随 $\tau$ 减小被大片标红；
+    $\tau{=}0.01$ 时~59.2\% 的表面采样点被剔除。}
+  \label{fig:ptcloud-cull}
+\end{figure}
+
 % ---------- 基线观察 ----------
 \subsubsection{基线观察}
 \label{ssec:baseline-obs}
 
-从表~\ref{tab:topo-cov-eff} 与图~\ref{fig:baseline-vis} 可以看出，
+从表~\ref{tab:topo-cov-eff} 可以看出，
 基线提取的网格包含~4{,}851 个连通分量，
 但最大分量仅占全部面数的约~49.5\%，
 说明近半数的三角面分布在数千个漂浮小块中。
@@ -312,17 +337,17 @@ $\tau{=}0.02$ 剔除 44.9\%，几何收益更显著但覆盖降至 71.0\%。
 \label{ssec:analysis}
 
 \paragraph{改动带来了什么。}
-多视角深度一致性剔点在所有 $\tau$ 设置下均显著降低了 Chamfer 距离
-（参考 B：基线 0.0531 $\to$ $\tau{=}0.02$ 时 0.0390，降幅约 27\%）、
-连通分量数（4{,}851 $\to$ 2{,}690，降幅 45\%）与孔洞数
-（7{,}970 $\to$ 5{,}480，降幅 31\%）。
-Completeness 均值大幅改善（参考 A：0.0495 $\to$ 0.0286，降幅 42\%），
+多视角深度一致性剔点在所有 $\tau$ 设置下均显著降低了 Chamfer 距离、
+连通分量数与孔洞数。
+Completeness 均值大幅改善，
 表明漂浮于远离参考面的虚假网格面已被有效消除。
-F-score 在所有阈值下均单调上升
-（F@1\% 参考 B：0.888 $\to$ 0.949），
+F-score 在所有阈值下均单调上升，
 进一步证实剔点在保持召回率的同时大幅提升了精确率。
 在 $\tau{=}0.05$ 时，最大分量面数占比从 49.5\% 升至 58.1\%，
 意味着网格几何更集中于场景主体。
+图~\ref{fig:mesh-render-topdown}--\ref{fig:heatmap-topdown} 从俯视视角直观展示了
+漂浮碎块与背景壳随 $\tau$ 减小被逐步消除的过程，
+图~\ref{fig:local-zoom} 的局部放大进一步印证了两个典型漂浮区域的面数大幅下降。
 
 \paragraph{改动没有带来什么。}
 渲染质量完全不变（PSNR 24.32\,dB、SSIM 0.848），
@@ -346,18 +371,5 @@ Poisson 重建本身产生开放边界，仅靠剔点无法弥补。
 Accuracy P90（参考 B）从 0.0200 升至 0.0258（变差 29\%），
 说明剔点误伤了部分真实表面，
 使一些参考点失去了近邻网格面。
-
-\paragraph{假设对照。}
-实验结果逐条验证了三项预注册假设：
-
-\begin{enumerate}[nosep,label=\textbf{H\arabic*}:]
-  \item \textbf{几何改善}——
-        连通分量数、Chamfer 距离、Completeness 均值三项均随剔点
-        单调改善（\textbf{支持}）。
-  \item \textbf{过剔损害覆盖}——
-        $\tau$ 越小，覆盖率越低、漏洞率越高、Accuracy P90 越差；
-        $\tau{=}0.01$ 构成典型的过度剔除案例（\textbf{支持}）。
-  \item \textbf{渲染不变}——
-        所有组别共享同一 Coarse 模型，PSNR / SSIM / LPIPS 恒等
-        （\textbf{支持}）。
-\end{enumerate}
+图~\ref{fig:ptcloud-cull} 可见 $\tau{=}0.01$ 时外圈被大片标红，
+部分车体边缘的真实表面也被误剔。
