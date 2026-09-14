@@ -1,0 +1,15 @@
+[阶段 0D] 评测维度/benchmark/指标调研（纯调研，未写实验代码、未跑实验）
+开始/结束：2026-09-14（单次会话内完成）
+输入：题目 PDF（pypdf 提取 4 页全文）、plans/SuGaR考核总计划.txt、notes/SURVEY.md、repo/SuGaR 源码
+只读检查的源码：metrics.py、gaussian_splatting/metrics.py、gaussian_splatting/scene/dataset_readers.py(:132)、
+  sugar_scene/gs_model.py(:140-155)、sugar_extractors/coarse_mesh.py、sugar_trainers/coarse_density_and_dn_consistency.py、
+  sugar_utils/mesh_rasterization.py、gaussian_splatting/utils/general_utils.py(:130-132)
+实测数字：truck 251图/219训/32测/COLMAP 136029点；train 301/263/38/182686；playroom 225/196/29/37005；drjohnson 263/230/33/80861
+产物：notes/评测方案调研.md（Word式字数约 2225，<=2500）
+[DEVIATION-0D-1] 任务描述称“SuGaR 论文用了 DTU Chamfer”，核对 arXiv HTML v3 实验节后不成立：
+  SuGaR 只报 PSNR/SSIM/LPIPS，数据集为 Mip-NeRF360(7)+T&T(Truck,Train)+DeepBlending(playroom,drjohnson)，无 DTU/Chamfer。
+  影响：不能照搬“SuGaR 的 DTU 协议”；已在笔记中改为推荐伪参考几何评测，并说明 DTU/TnT-GT 的真实成本。
+[DEVIATION-0D-2] 仓库根目录 metrics.py 只能评 refined(mesh+gaussian) 模型，且硬编码 vanilla 30k/7k 双 ckpt；
+  本项目不跑 refine、3DGS 只到 7k，故该脚本不可直接使用，需自写渲染评测脚本（复用 psnr/ssim/lpips 三个函数）。
+[注意] SuGaR 各 trainer 未设置随机种子（3DGS 的 safe_state 固定 seed=0），coarse 训练存在 run-to-run 差异。
+未做：任何实验、任何对现有模块的修改、任何文件删除、git 操作。

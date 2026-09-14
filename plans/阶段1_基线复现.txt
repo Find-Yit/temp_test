@@ -1,0 +1,25 @@
+# 阶段 1：基线复现（2026-09-14）
+
+## TL;DR
+场景 tandt/truck。先冒烟（3DGS 500 it → coarse 200 it → 提取），再正式基线（3DGS 7k → coarse dn_consistency 15k → 提取 mesh）。
+不跑 refine。全部产物中文命名，数值双份（json + txt）。
+
+## 冒烟
+outputs/冒烟_truck/：3DGS 500 iterations（--iterations 500 --save_iterations 500 --test_iterations 500），
+coarse dn_consistency 少量迭代（改 trainer 的 num_iterations 只能通过参数或临时副本脚本，不改仓库文件；若必须改，先复制到 scripts/ 再改），
+extract_mesh 一次（poisson_depth 可降到 7 加速）。目标：拿到可打开的 .ply。
+
+## 正式基线
+- 3DGS：repo/SuGaR/gaussian_splatting/train.py -s data/tandt/truck -m outputs/基线_truck/3dgs_7k --iterations 7000 --save_iterations 7000 --eval（--eval 使 llffhold=8 划分测试集）
+- coarse：repo/SuGaR/train_coarse_density_and_dn_consistency.py（或 train.py 的 coarse 部分）-s data/tandt/truck -c outputs/基线_truck/3dgs_7k -i 7000 -o outputs/基线_truck/coarse/ ；迭代 15k。
+- 提取：repo/SuGaR/extract_mesh.py -s ... -c ... -i 7000 -m <coarse .pt> -l 0.3 -d 10 -q 0.1 -o outputs/基线_truck/mesh/  （surface_level 0.3, poisson_depth 10, vertices_density_quantile 0.1）
+- 每阶段用 scripts/eval/计时运行.sh 记录墙钟与峰值显存（若尚不存在，用 /usr/bin/time -v + nvidia-smi 轮询）。
+- seed：3DGS 内置 seed 0；SuGaR trainer 无 seed，在启动命令前 export PYTHONHASHSEED=0，并在运行脚本里 torch.manual_seed(0)（通过 wrapper 不改仓库文件）。
+
+## 记录
+notes/RUNLOG_基线.md：命令、commit、seed、迭代数、墙钟、显存、输出路径、mesh 顶点/面数；每个数值另存 outputs/基线_truck/基线汇总.txt。
+
+## 验收（Fable）
+- mesh .ply 可用 open3d 读取，顶点数 > 1e5，面数 > 0。
+- 3DGS 7k ckpt 与 coarse .pt 存在；训练日志无 NaN。
+- RUNLOG 中的墙钟与日志时间戳一致。

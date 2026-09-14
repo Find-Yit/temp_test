@@ -1,0 +1,43 @@
+{
+  "pass": 7,
+  "total": 7,
+  "all_pass": true,
+  "elapsed_sec": 9.7,
+  "results": [
+    {
+      "name": "import torch (+cuda avail)",
+      "ok": true,
+      "detail": "torch=2.4.1+cu121 cuda_build=12.1 avail=True gpu=NVIDIA H200 cap=(9, 0)"
+    },
+    {
+      "name": "import diff_gaussian_rasterization",
+      "ok": true,
+      "detail": "_C=_C.cpython-310-x86_64-linux-gnu.so"
+    },
+    {
+      "name": "simple_knn._C GPU distCUDA2",
+      "ok": true,
+      "detail": "distCUDA2(2000x3)->(2000,) finite=True mean=0.003837"
+    },
+    {
+      "name": "pytorch3d GPU knn_points",
+      "ok": true,
+      "detail": "pytorch3d=0.7.8 knn_points.idx=(1, 128, 5) dists=(1, 128, 5)"
+    },
+    {
+      "name": "import open3d",
+      "ok": true,
+      "detail": "open3d=0.18.0"
+    },
+    {
+      "name": "import pymeshlab",
+      "ok": true,
+      "detail": "pymeshlab=2025.7.post1"
+    },
+    {
+      "name": "import plyfile",
+      "ok": true,
+      "detail": "plyfile=1.1.3"
+    }
+  ]
+}

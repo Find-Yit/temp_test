@@ -1,0 +1,43 @@
+{
+  "tag": "改动_τ0.05",
+  "mesh_path": "/scratch/e1351071/zju_test_test/outputs/改动_truck/改动_τ0.05/sugarmesh_3Dgs7000_densityestim02_sdfnorm02_level03_decim1000000.ply",
+  "topology": {
+    "V": 665745,
+    "F": 1295321,
+    "E": 1977084,
+    "euler": -16018,
+    "n_components": 3279,
+    "max_component_faces": 752821,
+    "max_component_ratio": 0.5811848954815061,
+    "top5_component_faces": [
+      752821,
+      111622,
+      74781,
+      41259,
+      22179
+    ],
+    "n_small_components_lt_0.1pct": 3240,
+    "non_manifold_edges": 0,
+    "boundary_edges": 68205,
+    "non_manifold_vertices": 11693,
+    "holes_boundary_loops": 6206,
+    "is_edge_manifold": true,
+    "is_vertex_manifold": false,
+    "is_watertight": false,
+    "degenerate_triangles": 0,
+    "self_intersect_skipped": true,
+    "self_intersect_sec": 120.67558097839355,
+    "self_intersect_skip_reason": "自交计算超过 120s 超时",
+    "self_intersecting_pairs": null,
+    "self_intersecting_triangles": null
+  },
+  "trimesh_crosscheck": {
+    "trimesh_available": true,
+    "V": 668192,
+    "F": 1295321,
+    "euler_number": -16018,
+    "is_watertight": false,
+    "boundary_loops": 16604
+  },
+  "elapsed_sec": 180.71209192276
+}

@@ -1,0 +1,339 @@
+{
+  "variants": [
+    "基线"
+  ],
+  "metrics": [
+    "M1",
+    "M2",
+    "M3",
+    "M4",
+    "M5",
+    "M6"
+  ],
+  "shared": {
+    "source_path": "/scratch/e1351071/zju_test_test/data/tandt/truck",
+    "gs_output": "/scratch/e1351071/zju_test_test/outputs/基线_truck/3dgs_7k",
+    "iteration": 7000,
+    "ref_a": "/scratch/e1351071/zju_test_test/outputs/基线_truck/3dgs_7k/point_cloud/iteration_7000/point_cloud.ply",
+    "ref_b_colmap": "/scratch/e1351071/zju_test_test/data/tandt/truck/sparse/0",
+    "cameras_json": "/scratch/e1351071/zju_test_test/outputs/基线_truck/3dgs_7k/cameras.json",
+    "out_dir": "/scratch/e1351071/zju_test_test/outputs/基线_truck/评测",
+    "repo_root": "/scratch/e1351071/zju_test_test/repo/SuGaR"
+  },
+  "results": {
+    "基线": {
+      "M1": {
+        "tag": "基线",
+        "source_path": "/scratch/e1351071/zju_test_test/data/tandt/truck",
+        "gs_output": "/scratch/e1351071/zju_test_test/outputs/基线_truck/3dgs_7k",
+        "iteration": 7000,
+        "eval_interval": 8,
+        "n_test_views": 32,
+        "image_hw": [
+          546,
+          979
+        ],
+        "sh_degree": 3,
+        "lpips_backend": "lpipsPyTorch",
+        "seed": 0,
+        "note_nondeterminism": "CUDA 光栅化 atomicAdd 非确定; SuGaR trainer 无 seed -> 存在单次运行差异",
+        "vanilla_3dgs": {
+          "psnr": 23.922265768051147,
+          "ssim": 0.849422886967659,
+          "lpips": 0.20163614116609097
+        },
+        "coarse_pt": "/scratch/e1351071/zju_test_test/outputs/基线_truck/coarse/sugarcoarse_3Dgs7000_densityestim02_sdfnorm02/15000.pt",
+        "coarse_sugar": {
+          "psnr": 24.322837114334106,
+          "ssim": 0.8482140526175499,
+          "lpips": 0.21701154951006174
+        },
+        "n_coarse_gaussians": 424177,
+        "elapsed_sec": 42.09245562553406,
+        "per_view_csv": "/scratch/e1351071/zju_test_test/outputs/基线_truck/评测/渲染指标_逐视角_基线.csv",
+        "render_dir": "/scratch/e1351071/zju_test_test/outputs/基线_truck/评测/渲染图_基线"
+      },
+      "M2": {
+        "tag": "基线",
+        "mesh_path": "/scratch/e1351071/zju_test_test/outputs/基线_truck/mesh/sugarmesh_3Dgs7000_densityestim02_sdfnorm02_level03_decim1000000.ply",
+        "mesh_vertices": 746704,
+        "mesh_faces": 1437272,
+        "n_sample": 1000000,
+        "seed": 0,
+        "fg_bbox_factor": 1.0,
+        "tau_ratios": [
+          0.005,
+          0.01,
+          0.02
+        ],
+        "scene_scale_diagonal": 13.339236128593468,
+        "scene_scale_source": "cameras_json",
+        "camera_bbox": {
+          "aabb_min": [
+            -4.316398107941433,
+            -0.8754497499635269,
+            -3.7269678021525365
+          ],
+          "aabb_max": [
+            5.336845559911888,
+            0.7473594673930097,
+            5.334853064951694
+          ],
+          "center": [
+            0.5102237259852274,
+            -0.06404514128525857,
+            0.8039426313995786
+          ],
+          "extent": [
+            9.65324366785332,
+            1.6228092173565365,
+            9.061820867104231
+          ],
+          "diagonal": 13.339236128593468
+        },
+        "crop_bbox": {
+          "min": [
+            -4.316398107941433,
+            -0.8754497499635268,
+            -3.726967802152537
+          ],
+          "max": [
+            5.336845559911888,
+            0.7473594673930097,
+            5.3348530649516945
+          ]
+        },
+        "references": {
+          "参考A_3DGS高斯中心": {
+            "reference": "参考A_3DGS高斯中心",
+            "n_faces_in_bbox": 245483,
+            "n_ref_points_before_crop": 1851298,
+            "n_ref_points_in_bbox": 284309,
+            "n_mesh_samples": 1000000,
+            "completeness_mesh_to_ref": {
+              "mean": 0.04950210573536667,
+              "median": 0.023298634979360848,
+              "rmse": 0.08154684320251226,
+              "p90": 0.1316644657044204,
+              "max": 0.7764504383501613,
+              "min": 5.510570224135863e-05,
+              "count": 1000000
+            },
+            "accuracy_ref_to_mesh": {
+              "mean": 0.015605280685447169,
+              "median": 0.009847715497016907,
+              "rmse": 0.050063341410414616,
+              "p90": 0.02912222743034363,
+              "max": 2.511214017868042,
+              "min": 4.71216097253091e-08,
+              "count": 284309
+            },
+            "chamfer_l1": 0.032553693210406916,
+            "chamfer_rmse": 0.06580509230646345,
+            "scene_scale_diagonal": 13.339236128593468,
+            "fscore": {
+              "tau_0.005": {
+                "tau_ratio": 0.005,
+                "tau_abs": 0.06669618064296734,
+                "precision": 0.768405,
+                "recall": 0.9864619129186906,
+                "fscore": 0.8638857575075557
+              },
+              "tau_0.01": {
+                "tau_ratio": 0.01,
+                "tau_abs": 0.13339236128593468,
+                "precision": 0.90224,
+                "recall": 0.9951531608215005,
+                "fscore": 0.9464216550990142
+              },
+              "tau_0.02": {
+                "tau_ratio": 0.02,
+                "tau_abs": 0.26678472257186936,
+                "precision": 0.983084,
+                "recall": 0.9976152707089821,
+                "fscore": 0.9902963314952123
+              }
+            }
+          },
+          "参考B_COLMAP稀疏点": {
+            "reference": "参考B_COLMAP稀疏点",
+            "n_faces_in_bbox": 245483,
+            "n_ref_points_before_crop": 136029,
+            "n_ref_points_in_bbox": 56988,
+            "n_mesh_samples": 1000000,
+            "completeness_mesh_to_ref": {
+              "mean": 0.08190519778177302,
+              "median": 0.047985881654725046,
+              "rmse": 0.1272275083971445,
+              "p90": 0.20047760569724796,
+              "max": 1.039977837336791,
+              "min": 9.038492931374265e-05,
+              "count": 1000000
+            },
+            "accuracy_ref_to_mesh": {
+              "mean": 0.0242394907376026,
+              "median": 0.0033126462949439883,
+              "rmse": 0.13147752769420654,
+              "p90": 0.019963808357715614,
+              "max": 2.4638495445251465,
+              "min": 1.0745380052412656e-07,
+              "count": 56988
+            },
+            "chamfer_l1": 0.053072344259687806,
+            "chamfer_rmse": 0.12935251804567552,
+            "scene_scale_diagonal": 13.339236128593468,
+            "fscore": {
+              "tau_0.005": {
+                "tau_ratio": 0.005,
+                "tau_abs": 0.06669618064296734,
+                "precision": 0.616302,
+                "recall": 0.959798554081561,
+                "fscore": 0.7506193268511322
+              },
+              "tau_0.01": {
+                "tau_ratio": 0.01,
+                "tau_abs": 0.13339236128593468,
+                "precision": 0.816537,
+                "recall": 0.972467887976416,
+                "fscore": 0.8877069226371199
+              },
+              "tau_0.02": {
+                "tau_ratio": 0.02,
+                "tau_abs": 0.26678472257186936,
+                "precision": 0.946241,
+                "recall": 0.9802940970028778,
+                "fscore": 0.9629665902112895
+              }
+            }
+          }
+        },
+        "elapsed_sec": 9.569249868392944
+      },
+      "M3": {
+        "tag": "基线",
+        "mesh_path": "/scratch/e1351071/zju_test_test/outputs/基线_truck/mesh/sugarmesh_3Dgs7000_densityestim02_sdfnorm02_level03_decim1000000.ply",
+        "topology": {
+          "V": 746704,
+          "F": 1437272,
+          "E": 2204180,
+          "euler": -20204,
+          "n_components": 4851,
+          "max_component_faces": 711886,
+          "max_component_ratio": 0.49530360293667447,
+          "top5_component_faces": [
+            711886,
+            175893,
+            111123,
+            102126,
+            51541
+          ],
+          "n_small_components_lt_0.1pct": 4823,
+          "non_manifold_edges": 0,
+          "boundary_edges": 96544,
+          "non_manifold_vertices": 15001,
+          "holes_boundary_loops": 7970,
+          "is_edge_manifold": true,
+          "is_vertex_manifold": false,
+          "is_watertight": false,
+          "degenerate_triangles": 0,
+          "self_intersect_skipped": true,
+          "self_intersect_sec": 120.34528017044067,
+          "self_intersect_skip_reason": "自交计算超过 120s 超时",
+          "self_intersecting_pairs": null,
+          "self_intersecting_triangles": null
+        },
+        "trimesh_crosscheck": {
+          "trimesh_available": true,
+          "V": 750841,
+          "F": 1437272,
+          "euler_number": -20204,
+          "is_watertight": false,
+          "boundary_loops": 21190
+        },
+        "elapsed_sec": 201.56116890907288
+      },
+      "M4": {
+        "tag": "基线",
+        "mesh_path": "/scratch/e1351071/zju_test_test/outputs/基线_truck/mesh/sugarmesh_3Dgs7000_densityestim02_sdfnorm02_level03_decim1000000.ply",
+        "gs_output": "/scratch/e1351071/zju_test_test/outputs/基线_truck/3dgs_7k",
+        "n_test_views": 32,
+        "image_hw": [
+          1070,
+          1920
+        ],
+        "alpha_thresh": 0.5,
+        "n_gaussians": 1851298,
+        "mesh_faces": 1437272,
+        "averaged": {
+          "mesh_coverage": 0.9289105776697397,
+          "fg_fraction": 0.9916140101850033,
+          "hole_rate_over_fg": 0.06658514435541563,
+          "hole_rate_over_all": 0.06597584940027446,
+          "mesh_covers_fg": 0.9334148556445843
+        },
+        "elapsed_sec": 47.35506534576416,
+        "per_view_csv": "/scratch/e1351071/zju_test_test/outputs/基线_truck/评测/覆盖指标_逐视角_基线.csv"
+      },
+      "M5": {
+        "tag": "基线",
+        "stages": [
+          {
+            "stage": "coarse_dn_15k",
+            "command": "python scripts/run_coarse_dn.py -s data/tandt/truck -c outputs/基线_truck/3dgs_7k -i 7000 -o outputs/基线_truck/coarse --num_iterations 15000 --eval True",
+            "gpu": 0,
+            "start_human": "2026-09-14 12:00:02",
+            "end_human": "2026-09-14 12:15:53",
+            "wall_seconds": 950.633,
+            "return_code": 0,
+            "peak_mem_process_group_MiB": 10098,
+            "peak_mem_whole_gpu_MiB": 19726,
+            "sample_interval_sec": 5.0,
+            "_source": "/scratch/e1351071/zju_test_test/outputs/基线_truck/计时/计时_coarse_dn_15k.json"
+          },
+          {
+            "stage": "提取mesh",
+            "command": "python scripts/run_extract_mesh.py -s data/tandt/truck -c outputs/基线_truck/3dgs_7k -i 7000 -m outputs/基线_truck/coarse/sugarcoarse_3Dgs7000_densityestim02_sdfnorm02/15000.pt -l 0.3 -d 1000000 -o outputs/基线_truck/mesh --surfpts_dir outputs/基线_truck/mesh --eval True",
+            "gpu": 0,
+            "start_human": "2026-09-14 12:15:55",
+            "end_human": "2026-09-14 12:21:54",
+            "wall_seconds": 359.079,
+            "return_code": 0,
+            "peak_mem_process_group_MiB": 8274,
+            "peak_mem_whole_gpu_MiB": 15311,
+            "sample_interval_sec": 5.0,
+            "_source": "/scratch/e1351071/zju_test_test/outputs/基线_truck/计时/计时_提取mesh.json"
+          },
+          {
+            "stage": "训练3DGS_7k",
+            "command": "python repo/SuGaR/gaussian_splatting/train.py -s data/tandt/truck -m outputs/基线_truck/3dgs_7k --iterations 7000 --save_iterations 7000 --test_iterations 7000 --eval --quiet",
+            "gpu": 0,
+            "start_human": "2026-09-14 11:57:34",
+            "end_human": "2026-09-14 11:59:33",
+            "wall_seconds": 118.633,
+            "return_code": 0,
+            "peak_mem_process_group_MiB": 6624,
+            "peak_mem_whole_gpu_MiB": 6873,
+            "sample_interval_sec": 5.0,
+            "_source": "/scratch/e1351071/zju_test_test/outputs/基线_truck/计时/计时_训练3DGS_7k.json"
+          }
+        ],
+        "total_wall_seconds": 1428.345,
+        "peak_mem_process_group_MiB": 10098,
+        "peak_mem_whole_gpu_MiB": 19726,
+        "mesh": {
+          "path": "/scratch/e1351071/zju_test_test/outputs/基线_truck/mesh/sugarmesh_3Dgs7000_densityestim02_sdfnorm02_level03_decim1000000.ply",
+          "vertices": 750841,
+          "faces": 1437272,
+          "file_bytes": 56977754,
+          "file_MiB": 54.3382
+        },
+        "extra_files": [],
+        "elapsed_sec": 3.8788790702819824
+      },
+      "M6": {
+        "figures_dir": "/scratch/e1351071/zju_test_test/outputs/基线_truck/评测/图"
+      }
+    }
+  },
+  "elapsed_sec": 407.59237837791443
+}

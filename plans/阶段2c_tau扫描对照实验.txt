@@ -1,0 +1,21 @@
+# 阶段 2c：τ 扫描对照实验（真实基线 coarse 模型）
+
+## TL;DR
+用 outputs/基线_truck/coarse/.../15000.pt 做提取阶段对照：先测 τ 剔除率曲线（只到表面点，不做 Poisson，快），
+再选 3 个 τ 跑完整提取 → mesh，对每个 mesh 跑 M2–M6（M1 与基线相同，因 coarse 未变，只需说明）。
+
+## 步骤
+1. τ 曲线：τ ∈ {0.005, 0.01, 0.02, 0.05, 0.1, 0.2}，k=2, v=1, M=30, seed=0，surface_level=0.3；输出 outputs/改动_truck/τ曲线/剔除率曲线.txt/.json + 图 剔除率_随τ变化.png。
+2. 正式设置（每个完整提取，参数与基线完全一致：-l 0.3 -d 1000000，poisson 10，quantile 0.1）：
+   - 改动_τ0.02（COLMAP 量级）、改动_τ0.05、改动_τ0.01；
+   - 若 τ≤0.05 的剔除率全部 > 60%，追加一个使剔除率落在 20–40% 的 τ（从曲线插值），并在 RUNLOG 写 [DEVIATION] 说明；
+   - 每个设置保存 mesh、表面点_剔点前/后.ply、剔点统计.txt、计时 txt（墙钟 + 峰值显存，含过滤器额外耗时单独记录）。
+   目录 outputs/改动_truck/改动_τ{值}/。
+3. 评测：对基线 + 每个改动 mesh 跑 scripts/eval/run_all_eval.py 的 M2–M6（与基线评测使用完全相同的参考点云、bbox、采样数、seed、τ_F-score）；输出 outputs/改动_truck/评测/ 与 汇总对照表.txt/.json（行=设置，列=剔除率、V、F、连通分量、最大分量占比、边界边、孔洞、Chamfer(参考A/B)、F-score、覆盖率、漏洞率、提取墙钟）。
+4. 复制 mesh 到 考核提交/网格/改动_truck_τ{值}_网格.ply，评测结果到 考核提交/指标/。
+5. RUNLOG_改动.md 追加所有命令与时间。
+
+## 验收（Fable）
+- 汇总对照表中基线行与 outputs/基线_truck/评测/ 数字一致。
+- Fable 独立复算至少一个改动 mesh 的 V/F/连通分量与 Chamfer(参考B)，相对误差 <1%。
+- 剔除率随 τ 单调递减。

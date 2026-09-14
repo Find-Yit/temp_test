@@ -1,0 +1,503 @@
+# 阶段2a 改动 patch (基线 commit 7c10c4ae4a267dece512f5c7f40ed212a0a2ab44)
+# 生成时间: 2026-09-14 12:28:58
+# 说明: 前两段为对已跟踪文件的修改; 第三段为新增文件(git diff --no-index, 不改动 git 状态)。
+#############################################################
+
+diff --git a/extract_mesh.py b/extract_mesh.py
+index 8652751..3ba03b9 100644
+--- a/extract_mesh.py
++++ b/extract_mesh.py
+@@ -39,9 +39,27 @@ if __name__ == "__main__":
+                         help='If True, just use centers of the gaussians to extract mesh.')
+     parser.add_argument('--use_marching_cubes', type=str2bool, default=False, 
+                         help='If True, use marching cubes to extract mesh.')
+-    parser.add_argument('--use_vanilla_3dgs', type=str2bool, default=False, 
++    parser.add_argument('--use_vanilla_3dgs', type=str2bool, default=False,
+                         help='If True, use vanilla 3DGS to extract mesh.')
+-    
++
++    # ----- Multi-view depth-consistency point filtering (阶段2a 改动, 默认关闭) -----
++    # 在 fg/bg 分离与 Poisson 之前，对表面采样点做多视角深度一致性投票剔点。
++    # 关闭(mv_filter=False)时提取流程与基线逐位一致。详见 sugar_extractors/mv_consistency_filter.py。
++    parser.add_argument('--mv_filter', type=str2bool, default=False,
++                        help='If True, run multi-view depth-consistency point filtering before Poisson.')
++    parser.add_argument('--mv_tau', type=float, default=0.02,
++                        help='Relative depth tolerance for consistency vote (COLMAP default is 0.01).')
++    parser.add_argument('--mv_min_consistent', type=int, default=2,
++                        help='Keep a point only if consistent votes >= this (ACMM uses 2).')
++    parser.add_argument('--mv_max_conflict', type=int, default=1,
++                        help='Keep a point only if free-space conflict votes <= this.')
++    parser.add_argument('--mv_n_ref_cams', type=int, default=30,
++                        help='Number M of reference cameras whose depth maps are cached.')
++    parser.add_argument('--mv_n_votes', type=int, default=0,
++                        help='Per-point votes K: 0 or >=M means use all M reference cameras.')
++    parser.add_argument('--mv_seed', type=int, default=0,
++                        help='Seed for reference-camera sampling (and per-point K sampling).')
++
+     args = parser.parse_args()
+     
+     # Call function
+diff --git a/sugar_extractors/coarse_mesh.py b/sugar_extractors/coarse_mesh.py
+index 414a0f2..9e0fc00 100644
+--- a/sugar_extractors/coarse_mesh.py
++++ b/sugar_extractors/coarse_mesh.py
+@@ -8,6 +8,9 @@ from sugar_scene.gs_model import GaussianSplattingWrapper
+ from sugar_scene.sugar_model import SuGaR
+ from sugar_utils.general_utils import str2bool
+ from sugar_utils.spherical_harmonics import SH2RGB
++from sugar_extractors.mv_consistency_filter import (
++    multiview_depth_consistency_filter, write_filter_stats,
++)
+ 
+ from rich.console import Console
+ 
+@@ -105,7 +108,27 @@ def extract_mesh_from_coarse_sugar(args):
+     use_centers_to_extract_mesh = args.use_centers_to_extract_mesh
+     use_marching_cubes = args.use_marching_cubes
+     use_vanilla_3dgs = args.use_vanilla_3dgs
+-            
++
++    # ----- Multi-view depth-consistency filtering config (阶段2a 改动, 默认关闭) -----
++    # 兼容 argparse.Namespace(extract_mesh.py) 与 AttrDict(dict)(train.py); 缺省即基线行为。
++    def _cfg(a, name, default):
++        if isinstance(a, dict):
++            return a.get(name, default)
++        return getattr(a, name, default)
++    mv_filter = _cfg(args, 'mv_filter', False)
++    mv_tau = _cfg(args, 'mv_tau', 0.02)
++    mv_min_consistent = _cfg(args, 'mv_min_consistent', 2)
++    mv_max_conflict = _cfg(args, 'mv_max_conflict', 1)
++    mv_n_ref_cams = _cfg(args, 'mv_n_ref_cams', 30)
++    mv_n_votes = _cfg(args, 'mv_n_votes', 0)
++    mv_seed = _cfg(args, 'mv_seed', 0)
++    mv_filter_stats = []  # 每个 surface_level 的剔点统计, 循环后统一落盘
++    CONSOLE.print("Multi-view depth-consistency filter:", mv_filter)
++    if mv_filter:
++        CONSOLE.print(f"  mv_tau={mv_tau} mv_min_consistent={mv_min_consistent} "
++                      f"mv_max_conflict={mv_max_conflict} mv_n_ref_cams={mv_n_ref_cams} "
++                      f"mv_n_votes={mv_n_votes} mv_seed={mv_seed}")
++
+     CONSOLE.print("-----Parameters-----")
+     CONSOLE.print("Source path:", source_path)
+     CONSOLE.print("Gaussian Splatting Checkpoint path:", gs_checkpoint_path)
+@@ -337,6 +360,30 @@ def extract_mesh_from_coarse_sugar(args):
+                 surface_colors = surface_levels_outputs[surface_level]['colors']
+                 surface_normals = surface_levels_outputs[surface_level]['normals']
+ 
++                # ----- 阶段2a 改动: Poisson 前多视角深度一致性剔点 (默认关闭) -----
++                # 关闭(mv_filter=False)时本分支完全不执行, 输出与基线逐位一致。
++                if mv_filter:
++                    keep_mask, mv_stats = multiview_depth_consistency_filter(
++                        sugar, surface_points,
++                        colors=surface_colors, normals=surface_normals,
++                        cameras=nerfmodel.training_cameras,
++                        n_ref_cams=mv_n_ref_cams, n_votes=mv_n_votes, tau=mv_tau,
++                        min_consistent=mv_min_consistent, max_conflict=mv_max_conflict,
++                        seed=mv_seed, surface_level=surface_level,
++                        save_ply_dir=mesh_output_dir,
++                        ply_prefix=("" if len(surface_levels) == 1
++                                    else "level" + str(surface_level).replace('.', '')),
++                    )
++                    mv_filter_stats.append(mv_stats)
++                    surface_points = surface_points[keep_mask]
++                    surface_colors = surface_colors[keep_mask]
++                    surface_normals = surface_normals[keep_mask]
++                    CONSOLE.print(
++                        f"[mv_filter] surface_level {surface_level}: "
++                        f"{mv_stats['剔点前点数']} -> {mv_stats['剔点后点数']} points "
++                        f"(removed {mv_stats['剔除点数']}, rate {mv_stats['剔除率']:.4f})"
++                    )
++
+                 if use_custom_bbox:
+                     CONSOLE.print("Using provided bounding box.")
+                     fg_bbox_min_tensor = torch.tensor(fg_bbox_min).to(sugar.device)
+@@ -520,7 +567,12 @@ def extract_mesh_from_coarse_sugar(args):
+                     o3d.io.write_triangle_mesh(sugar_mesh_path, decimated_o3d_mesh, write_triangle_uvs=True, write_vertex_colors=True, write_vertex_normals=True)
+                     CONSOLE.print("Mesh saved at", sugar_mesh_path)
+                     all_sugar_mesh_paths.append(sugar_mesh_path)
+-                    
++
++            # ----- 阶段2a 改动: 落盘多视角剔点统计 (仅当开启) -----
++            if mv_filter and len(mv_filter_stats) > 0:
++                _stats_json, _stats_txt = write_filter_stats(mv_filter_stats, mesh_output_dir)
++                CONSOLE.print(f"[mv_filter] Stats saved at {_stats_json} and {_stats_txt}")
++
+         else:
+             CONSOLE.print("\nWARNING: Using centers of gaussians to extract mesh.")
+             CONSOLE.print("Results will look bad, this is not the best way to extract a mesh.")
+
+#############################################################
+# 新增文件: sugar_extractors/mv_consistency_filter.py
+#############################################################
+diff --git a/sugar_extractors/mv_consistency_filter.py b/sugar_extractors/mv_consistency_filter.py
+new file mode 100644
+index 0000000..952143f
+--- /dev/null
++++ b/sugar_extractors/mv_consistency_filter.py
+@@ -0,0 +1,366 @@
++# -*- coding: utf-8 -*-
++"""
++mv_consistency_filter.py
++========================
++Poisson 重建之前，对 SuGaR 表面采样点做**多视角深度一致性投票剔点**。
++
++动机
++----
++SuGaR 的表面点是"沿各训练视角的像素射线、在密度首次跨越 surface_level 处"取到的。
++这些点单视角自洽，但漂浮几何/背景壳上的点换一个视角就会落进自由空间（free space），
++进入 Poisson 后形成伪表面与膜状连接。本模块在 fg/bg 分离与 Poisson 之前，用其它相机的
++渲染深度图对每个表面点投票，剔除只在单一视角自洽的点。
++
++先例与归属（详见 notes/先例核实.md）
++------------------------------------
++判据 = MVS 标准的多视角几何一致性融合：
++  * COLMAP StereoFusion（fusion.cc:395）：相对深度差 `|proj.z - depth|/depth < max_depth_error(=0.01)`；
++  * ACMM（main.cpp:257,273）：`relative_depth_diff < 0.01` 且 `num_consistent >= 2` 投票保留；
++  * GaussianPro（graphics_utils.py:338 check_geometric_consistency，thre2=0.01）：其 3DGS 版本。
++动机同类工作：Gaussian Surfels 的 volumetric cutting、Frosting 的 non-visible connected component removal。
++
++与先例的差异
++------------
++1. 判据形式：COLMAP/ACMM/GaussianPro 做"深度图->源视角->回投参考视角"的前向-后向重投影，
++   同时卡像素重投影误差(1-2px)与相对深度差(0.01)；本模块是"3D 表面点->其它相机渲染深度图"的
++   **单向投影**，只卡相对深度差，无重投影误差项、不做回投（点本身即 3D，无需回投取点）。
++2. 过滤对象与位置：先例过滤深度图像素(Gaussian Surfels)或 Poisson 之后的 mesh 连通分量(Frosting)；
++   本模块过滤 SuGaR 在 **fg/bg 分离与 Poisson 之前**的表面采样点（此插入点无先例代码）。
++3. 我们额外区分**空域冲突票**（z_p < z_map - tau*z_map，点浮在已观测表面之前），
++   COLMAP/ACMM 只有一致/不一致二元。
++
++坐标与深度约定（精读 sugar_model.py 后确认，见 notes/RUNLOG_改动.md §0）
++---------------------------------------------------------------------
++* 深度 = PyTorch3D **视空间 z 坐标**（不是欧氏距离；相机朝 +z，z 越大越远）。
++  render_depth_and_normal 的深度通道 = get_world_to_view_transform().transform_points(points)[...,2]。
++  背景（无高斯）像素深度 = bg_color[0] = 0。
++* get_points_depth_in_depth_map(fov_camera, depth, points_in_camera_space)：
++  输入的点必须是**视空间坐标**（= get_world_to_view_transform().transform_points(世界点)）；
++  内部 grid_sample 用 padding_mode='border'，画幅外的点会采样到边界伪值，故本模块自带 in_bounds 掩码。
++
++判据（对每个"有效"相机 c）
++--------------------------
++有效 = z_p > znear 且 投影在画幅内 且 z_map > eps（该像素确有高斯渲染）。
++  * 一致票 : |z_p - z_map| <  tau * z_map
++  * 空域冲突票: z_p < z_map - tau * z_map
++  * 其余（z_p > z_map*(1+tau)，被遮挡/在表面后）：不计票。
++保留：一致票 >= min_consistent 且 空域冲突票 <= max_conflict。
++
++失败处理
++--------
++* 训练相机数 <= n_ref_cams：使用全部相机。
++* 表面点数 N==0：直接返回空 keep 与平凡统计。
++* 被任何参考相机都看不到的点（valid 计数=0）：一致票=0 -> 被剔除；统计里单列 n_never_in_view，
++  作为 H2（弱覆盖区域可能被误剔）的诊断依据。
++
++输入/输出
++---------
++multiview_depth_consistency_filter(sugar, points, colors, normals, cameras, ...)
++  -> (keep_mask: BoolTensor (N,), stats: dict)
++调用方（coarse_mesh.py）用 keep_mask 切片 points/colors/normals；统计由 write_filter_stats 落盘。
++"""
++
++import os
++import json
++import numpy as np
++import torch
++
++
++# ---------------------------------------------------------------------------
++# 纯几何/投票核心（不依赖完整 SuGaR 模型，便于单元测试）
++# ---------------------------------------------------------------------------
++def _project_to_grid(fov_camera, points_in_camera_space, image_height, image_width):
++    """把视空间点投影为 grid_sample 坐标，并给出"是否落在画幅内"掩码。
++
++    完全复刻 SuGaR.get_points_depth_in_depth_map 的投影公式（sugar_model.py:1351-1357），
++    仅用于求 in_bounds（get_points_depth_in_depth_map 用 padding_mode='border'，不返回越界信息）。
++
++    Args:
++        fov_camera: 单个 PyTorch3D 相机（training_cameras.p3d_cameras[idx]）。
++        points_in_camera_space: (N,3) 视空间坐标。
++        image_height, image_width: 深度图高宽（= sugar.image_height/width）。
++    Returns:
++        grid: (N,2) grid_sample 坐标（x=宽方向, y=高方向），范围理论上 [-1,1]。
++        in_bounds: (N,) bool，|x|<=1 且 |y|<=1。
++    """
++    pts_proj = fov_camera.get_projection_transform().transform_points(points_in_camera_space)
++    factor = -1.0 * min(image_height, image_width)
++    u = factor / image_width * pts_proj[..., 0]
++    v = factor / image_height * pts_proj[..., 1]
++    grid = torch.stack([u, v], dim=-1)
++    in_bounds = (u.abs() <= 1.0) & (v.abs() <= 1.0)
++    return grid, in_bounds
++
++
++def _sample_depth(depth_map, grid):
++    """在深度图上按 grid_sample 采样深度。复刻 get_points_depth_in_depth_map 的采样(1359-1363)。
++
++    Args:
++        depth_map: (H,W) 渲染深度图（视空间 z）。
++        grid: (N,2) grid_sample 坐标。
++    Returns:
++        (N,) 采样到的深度。
++    """
++    depth_view = depth_map.unsqueeze(0).unsqueeze(-1).permute(0, 3, 1, 2)  # (1,1,H,W)
++    g = grid.view(1, -1, 1, 2)
++    return torch.nn.functional.grid_sample(
++        depth_view, g, mode='bilinear', padding_mode='border', align_corners=None
++    )[0, 0, :, 0]
++
++
++def _build_membership(n_points, n_ref, n_votes, seed):
++    """K 模式：为每个点固定 seed 随机抽 n_votes 个参考相机。
++
++    Returns:
++        sel: (n_points, n_ref) bool（CPU）。sel[p,j]=True 表示参考相机 j 参与点 p 的投票。
++    """
++    g = torch.Generator().manual_seed(int(seed))
++    sel = torch.zeros(n_points, n_ref, dtype=torch.bool)
++    chunk = 1_000_000
++    for s in range(0, n_points, chunk):
++        e = min(s + chunk, n_points)
++        r = torch.rand(e - s, n_ref, generator=g)
++        idx = r.topk(n_votes, dim=1).indices
++        sel[s:e].scatter_(1, idx, True)
++    return sel
++
++
++def compute_keep_mask(consistent_votes, conflict_votes, min_consistent, max_conflict):
++    """保留规则：一致票 >= min_consistent 且 空域冲突票 <= max_conflict。"""
++    return (consistent_votes >= min_consistent) & (conflict_votes <= max_conflict)
++
++
++def accumulate_votes(
++    points, ref_cameras, depth_maps, znear_list, tau,
++    depth_sampler, n_votes=0, seed=0, chunk_size=2_000_000,
++    bg_depth_eps=1e-6, image_hw=None, device=None,
++):
++    """对所有点、所有参考相机做投票累积（分块，内存安全）。
++
++    这是可单元测试的核心：只依赖 (相机, 深度图, 采样器)，不需要完整 SuGaR 模型。
++
++    Args:
++        points: (N,3) 世界坐标（任意 device）。
++        ref_cameras: 长度 M 的列表，每项为单个 PyTorch3D 相机。
++        depth_maps: 长度 M 的列表，每项为 (H,W) 深度图（可在 CPU，逐相机搬到 device）。
++        znear_list: 长度 M 的列表，每个相机的 znear。
++        tau: 相对深度容差。
++        depth_sampler: 可调用 (fov_camera, depth, points_in_camera_space)->(N,) 渲染深度。
++            集成路径传 sugar.get_points_depth_in_depth_map；测试可传等价复刻。
++        n_votes: 0 或 >=M -> 每点用全部 M 个相机；0<n_votes<M -> 每点随机抽 n_votes 个相机。
++        image_hw: (H,W) 覆盖（集成路径传 sugar.image_height/width 以与 depth_sampler 完全一致）；
++            None 则用 depth_map.shape[-2:]。
++    Returns:
++        consistent_votes, conflict_votes, valid_counts: 均为 (N,) long（device 上）。
++    """
++    if device is None:
++        device = points.device
++    N = points.shape[0]
++    M = len(ref_cameras)
++    consistent_votes = torch.zeros(N, dtype=torch.long, device=device)
++    conflict_votes = torch.zeros(N, dtype=torch.long, device=device)
++    valid_counts = torch.zeros(N, dtype=torch.long, device=device)
++
++    use_k = (n_votes is not None) and (0 < int(n_votes) < M)
++    sel = _build_membership(N, M, int(n_votes), seed) if use_k else None
++
++    for j in range(M):
++        cam = ref_cameras[j]
++        depth_j = depth_maps[j].to(device)
++        if image_hw is not None:
++            H, W = int(image_hw[0]), int(image_hw[1])
++        else:
++            H, W = int(depth_j.shape[-2]), int(depth_j.shape[-1])
++        znear = float(znear_list[j])
++        for start in range(0, N, chunk_size):
++            end = min(start + chunk_size, N)
++            pts = points[start:end].to(device)
++            pcs = cam.get_world_to_view_transform().transform_points(pts)  # (c,3) 视空间
++            z_p = pcs[..., 2]
++            z_map = depth_sampler(cam, depth_j, pcs)                       # (c,) 渲染深度
++            _, in_bounds = _project_to_grid(cam, pcs, H, W)
++            valid = in_bounds & (z_p > znear) & (z_map > bg_depth_eps)
++            if use_k:
++                valid = valid & sel[start:end, j].to(device)
++            diff = z_p - z_map
++            consistent = valid & (diff.abs() < tau * z_map)
++            conflict = valid & (z_p < z_map - tau * z_map)
++            consistent_votes[start:end] += consistent.long()
++            conflict_votes[start:end] += conflict.long()
++            valid_counts[start:end] += valid.long()
++        del depth_j
++        if device.type == 'cuda':
++            torch.cuda.empty_cache()
++    return consistent_votes, conflict_votes, valid_counts
++
++
++# ---------------------------------------------------------------------------
++# 集成入口（依赖 SuGaR：渲染深度图 + 调用 get_points_depth_in_depth_map）
++# ---------------------------------------------------------------------------
++def sample_reference_cameras(n_cameras, n_ref_cams, seed):
++    """固定 seed 从 [0, n_cameras) 均匀随机抽 n_ref_cams 个不重复索引并排序。"""
++    if n_cameras <= n_ref_cams:
++        return list(range(n_cameras))
++    rng = np.random.default_rng(int(seed))
++    idx = rng.choice(n_cameras, size=int(n_ref_cams), replace=False)
++    return sorted(int(i) for i in idx)
++
++
++@torch.no_grad()
++def multiview_depth_consistency_filter(
++    sugar, points, colors=None, normals=None, cameras=None, *,
++    n_ref_cams=30, n_votes=0, tau=0.02, min_consistent=2, max_conflict=1,
++    seed=0, chunk_size=2_000_000, bg_depth_eps=1e-6,
++    surface_level=None, save_ply_dir=None, ply_prefix="", verbose=True,
++):
++    """对表面点做多视角深度一致性剔点。
++
++    Args:
++        sugar: 已加载的 SuGaR 模型（提供 render_depth_and_normal / get_points_depth_in_depth_map /
++            image_height / image_width / nerfmodel.training_cameras）。
++        points: (N,3) 表面点世界坐标。
++        colors, normals: (N,3) 可选，用于落盘 pre/post 点云。
++        cameras: CamerasWrapper；默认 sugar.nerfmodel.training_cameras。
++        n_ref_cams(M): 参考相机数。n_votes(K): 0/>=M 用全部；0<K<M 每点随机抽 K 个。
++        tau: 相对深度容差。min_consistent/max_conflict: 保留阈值。
++        save_ply_dir: 若给出，落盘 表面点_剔点前.ply / 表面点_剔点后.ply（多 level 时带 level 前缀）。
++    Returns:
++        keep_mask: (N,) bool（在 points.device 上）。
++        stats: dict（供 write_filter_stats 落盘）。
++    """
++    device = points.device
++    if cameras is None:
++        cameras = sugar.nerfmodel.training_cameras
++    n_cameras = len(cameras)
++    N = int(points.shape[0])
++
++    ref_idx = sample_reference_cameras(n_cameras, n_ref_cams, seed)
++    M = len(ref_idx)
++
++    if verbose:
++        print(f"[mv_filter] surface_level={surface_level} N={N} n_cameras={n_cameras} "
++              f"M(ref)={M} K(votes)={n_votes if (n_votes and 0 < n_votes < M) else 'all'} "
++              f"tau={tau} min_consistent={min_consistent} max_conflict={max_conflict} seed={seed}")
++
++    if N == 0:
++        stats = _make_stats(surface_level, tau, min_consistent, max_conflict, M, n_votes, seed,
++                            ref_idx, 0, 0,
++                            torch.zeros(1, dtype=torch.long), torch.zeros(1, dtype=torch.long), 0)
++        keep_mask = torch.zeros(0, dtype=torch.bool, device=device)
++        return keep_mask, stats
++
++    # --- 1. 预渲染并缓存 M 个参考相机的深度图（存 CPU，投票时逐相机搬回 GPU）---
++    depth_maps, ref_cameras, znear_list = [], [], []
++    for k, cam_idx in enumerate(ref_idx):
++        depth_img, _ = sugar.render_depth_and_normal(nerf_cameras=cameras, camera_indices=cam_idx)
++        depth_maps.append(depth_img.detach().to('cpu'))
++        cam = cameras.p3d_cameras[cam_idx]
++        ref_cameras.append(cam)
++        znear_list.append(float(cam.znear) if not torch.is_tensor(cam.znear) else float(cam.znear.reshape(-1)[0]))
++        if verbose and (k % 10 == 0):
++            print(f"[mv_filter] cached depth {k+1}/{M} (cam {cam_idx})")
++
++    # --- 2. 投票（用 sugar.get_points_depth_in_depth_map 采样，image_hw 与其内部一致）---
++    consistent_votes, conflict_votes, valid_counts = accumulate_votes(
++        points=points, ref_cameras=ref_cameras, depth_maps=depth_maps, znear_list=znear_list,
++        tau=tau, depth_sampler=sugar.get_points_depth_in_depth_map,
++        n_votes=n_votes, seed=seed, chunk_size=chunk_size, bg_depth_eps=bg_depth_eps,
++        image_hw=(sugar.image_height, sugar.image_width), device=device,
++    )
++
++    keep_mask = compute_keep_mask(consistent_votes, conflict_votes, min_consistent, max_conflict)
++    n_kept = int(keep_mask.sum().item())
++    n_never = int((valid_counts == 0).sum().item())
++
++    stats = _make_stats(surface_level, tau, min_consistent, max_conflict, M, n_votes, seed,
++                        ref_idx, N, n_kept, consistent_votes, conflict_votes, n_never)
++
++    if verbose:
++        print(f"[mv_filter] kept {n_kept}/{N} (removed {N-n_kept}, rate={stats['剔除率']:.4f}); "
++              f"never-in-view={n_never}")
++
++    # --- 3. 落盘 pre/post 点云 ---
++    if save_ply_dir is not None:
++        _save_prepost_ply(save_ply_dir, ply_prefix, surface_level, points, colors, normals, keep_mask)
++
++    return keep_mask, stats
++
++
++def _make_stats(surface_level, tau, min_consistent, max_conflict, M, n_votes, seed,
++                ref_idx, N, n_kept, consistent_votes, conflict_votes, n_never):
++    n_removed = N - n_kept
++    hist_len = M + 1
++    cons_hist = torch.bincount(consistent_votes.reshape(-1).clamp(min=0).long(), minlength=hist_len)[:hist_len]
++    conf_hist = torch.bincount(conflict_votes.reshape(-1).clamp(min=0).long(), minlength=hist_len)[:hist_len]
++    return {
++        'surface_level': surface_level,
++        'tau': float(tau),
++        'min_consistent': int(min_consistent),
++        'max_conflict': int(max_conflict),
++        'n_ref_cams': int(M),
++        'n_votes': int(n_votes),
++        'seed': int(seed),
++        'ref_camera_indices': list(ref_idx),
++        '剔点前点数': int(N),
++        '剔点后点数': int(n_kept),
++        '剔除点数': int(n_removed),
++        '剔除率': (float(n_removed) / N) if N > 0 else 0.0,
++        'n_never_in_view': int(n_never),
++        '一致票直方图': [int(x) for x in cons_hist.tolist()],
++        '冲突票直方图': [int(x) for x in conf_hist.tolist()],
++    }
++
++
++def _save_prepost_ply(save_ply_dir, ply_prefix, surface_level, points, colors, normals, keep_mask):
++    import open3d as o3d
++    os.makedirs(save_ply_dir, exist_ok=True)
++
++    def _build(pts, cols, nrms, mask=None):
++        pcd = o3d.geometry.PointCloud()
++        p = pts if mask is None else pts[mask]
++        pcd.points = o3d.utility.Vector3dVector(p.double().cpu().numpy())
++        if cols is not None:
++            c = cols if mask is None else cols[mask]
++            pcd.colors = o3d.utility.Vector3dVector(c.double().clamp(0, 1).cpu().numpy())
++        if nrms is not None:
++            n = nrms if mask is None else nrms[mask]
++            pcd.normals = o3d.utility.Vector3dVector(n.double().cpu().numpy())
++        return pcd
++
++    pre_name = "表面点_剔点前.ply"
++    post_name = "表面点_剔点后.ply"
++    if ply_prefix:
++        pre_name = f"{ply_prefix}_" + pre_name
++        post_name = f"{ply_prefix}_" + post_name
++    o3d.io.write_point_cloud(os.path.join(save_ply_dir, pre_name), _build(points, colors, normals, None))
++    o3d.io.write_point_cloud(os.path.join(save_ply_dir, post_name), _build(points, colors, normals, keep_mask))
++
++
++def write_filter_stats(stats_list, out_dir):
++    """把（可能多个 surface_level 的）统计落盘为 剔点统计.json 与 剔点统计.txt。"""
++    os.makedirs(out_dir, exist_ok=True)
++    json_path = os.path.join(out_dir, "剔点统计.json")
++    txt_path = os.path.join(out_dir, "剔点统计.txt")
++    with open(json_path, "w", encoding="utf-8") as f:
++        json.dump(stats_list, f, ensure_ascii=False, indent=2)
++
++    lines = ["多视角深度一致性剔点 统计", "=" * 40, ""]
++    for st in stats_list:
++        lines += [
++            f"surface_level = {st['surface_level']}",
++            f"  参数: tau={st['tau']}  min_consistent={st['min_consistent']}  "
++            f"max_conflict={st['max_conflict']}  n_ref_cams={st['n_ref_cams']}  "
++            f"n_votes={st['n_votes']}  seed={st['seed']}",
++            f"  参考相机索引: {st['ref_camera_indices']}",
++            f"  剔点前点数: {st['剔点前点数']}",
++            f"  剔点后点数: {st['剔点后点数']}",
++            f"  剔除点数:   {st['剔除点数']}",
++            f"  剔除率:     {st['剔除率']:.4f}",
++            f"  任何参考相机都看不到的点数(n_never_in_view): {st['n_never_in_view']}",
++            f"  一致票直方图(索引=一致票数, 值=点数): {st['一致票直方图']}",
++            f"  冲突票直方图(索引=冲突票数, 值=点数): {st['冲突票直方图']}",
++            "",
++        ]
++    with open(txt_path, "w", encoding="utf-8") as f:
++        f.write("\n".join(lines))
++    return json_path, txt_path

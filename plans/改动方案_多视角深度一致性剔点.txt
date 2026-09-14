@@ -1,0 +1,51 @@
+# 改动方案：Poisson 重建前的多视角深度一致性剔点（2026-09-14 定案）
+
+## TL;DR
+在 SuGaR mesh 提取主流程中（sugar_extractors/coarse_mesh.py，表面点采样之后、前背景分离与 Poisson 之前），
+对每个表面采样点做多视角深度一致性投票，剔除只在单一视角自洽的漂浮点/背景壳点。
+只需重跑提取阶段，一次 coarse 训练即可支撑 baseline + 多个 τ 的消融。若时间有余，加候选 B（训练内扁平化正则）作为第二组对照。
+
+## 动机
+SuGaR 的表面点由各训练视角射线上密度首次跨越 surface_level 的位置采样得到，单视角自洽但跨视角可能落在空域，
+形成漂浮几何与背景壳，进入 Poisson 后产生伪表面与膜状连接。
+
+## 先例与归属（2026-09-14 经 notes/先例核实.md 逐行核对源码后更正）
+- 判据来源：MVS 标准的多视角几何一致性融合——COLMAP StereoFusion（fusion.cc:395，相对深度差 max_depth_error=0.01，min_num_pixels）
+  + ACMM（relative_depth_diff<0.01 且 num_consistent>=2 投票）；GaussianPro（graphics_utils.py:338 check_geometric_consistency thre2=0.01）是其 3DGS 版本。
+- 动机同类工作：Gaussian Surfels 的 volumetric cutting（实为占据栅格剔点，非深度投票）、Frosting 的 remove_nonvisible_connected_components（Poisson 之后按连通分量可见性删除）。
+- 我们的改动 = 把 COLMAP/ACMM/GaussianPro 的相对深度一致性 + 投票判据，移植到 SuGaR 的 Poisson 之前表面采样点上（该插入位置无先例代码）。
+- 与先例的差异：(1) 先例前向-后向重投影并同时卡像素重投影误差，我们单向投影只卡相对深度差（可选加重投影误差）；(2) 先例过滤深度图像素或 Poisson 后的 mesh 分量，我们过滤 fg/bg 分离与 Poisson 前的表面点。
+- τ 扫描 {0.01, 0.02, 0.05} 恰好把 COLMAP 默认 0.01 包含在内。
+- 第二组对照（可选）：移植 Frosting 的 remove_nonvisible_connected_components（约 50 行），用于对比"Poisson 前剔点"与"Poisson 后删分量"。
+
+## 预注册假设
+H1：剔点后 mesh 的连通分量数与孤立小块数下降，Chamfer(accuracy 方向，mesh→参考点云) 下降。
+H2：τ 过小会误剔薄结构/弱覆盖区域，导致 completeness 变差、孔洞增加（失败案例来源）。
+H3：渲染指标（测试视角 PSNR/SSIM）基本不变，因 coarse 模型未重训；refine 阶段若跑则可能小幅变化。
+
+## 实现要点（≤100 行，新增函数 + 一个开关，不破坏默认行为）
+- 文件：repo/SuGaR/sugar_extractors/coarse_mesh.py。新增函数 multiview_depth_consistency_filter(sugar, points, cameras, n_ref_cams=M, n_votes=K, tau, min_consistent=k, max_conflict=v, seed)。
+- 用 sugar.render_depth_and_normal(camera_indices=i) 缓存 M 个（均匀抽样）训练相机的深度图；每点投影到 K 个相机，
+  用 sugar.get_points_depth_in_depth_map(...) 取对应像素渲染深度 z_map；|z_p−z_map| < τ·z_map 记一致票；z_p < z_map−τ·z_map 记空域冲突票；
+  保留一致票 ≥ k 且冲突票 ≤ v；点在视锥外的相机不计票。
+- 通过 extract_mesh.py / train.py 增加参数 --mv_filter (bool, 默认 False) --mv_tau (float) --mv_min_consistent --mv_max_conflict，全部透传到 coarse_mesh.py 的 config。
+- 落盘统计：每个 surface_level 剔点前/后点数、剔除率，写到输出目录的 剔点统计.txt 与 .json。
+- 固定 seed=0 抽样相机。
+
+## 实验矩阵（场景：tandt/truck；3DGS 7k；coarse dn_consistency 15k 或按时间缩减到 ≤15k，同一 coarse 模型）
+| 设置 | mv_filter | τ |
+| 基线 | off | - |
+| 改动-τ0.02 | on | 0.02 |
+| 改动-τ0.05 | on | 0.05 |
+| 改动-τ0.01（若时间允许） | on | 0.01 |
+其余提取参数（surface_level=0.3, poisson_depth=10, vertices_density_quantile=0.1, bbox）全部相同。
+
+## 指标（具体按 notes/评测方案调研.md 定稿）
+几何：mesh→3DGS 高斯中心/COLMAP 点云的 Chamfer 与点到面距离（双向）；网格拓扑统计：顶点/面数、连通分量数、
+非流形边、边界边数（孔洞代理）。渲染：测试视角（llffhold=8）PSNR/SSIM/LPIPS，覆盖率（有效像素比例）。
+可视化：基线 vs 改动 的 mesh 渲染图、连通分量着色图、误差热图。
+
+## 验收标准（Fable 独立验证）
+1. git diff 只涉及 coarse_mesh.py + 参数透传，默认关闭时与基线输出 mesh 顶点数一致（同 seed）。
+2. 剔点统计.txt 存在且剔除率在 (0, 50%) 内；每个 τ 的 mesh 可被 open3d 打开。
+3. Fable 用独立脚本复算 Chamfer 与连通分量数，与执行者数字一致（相对误差 <1%）。

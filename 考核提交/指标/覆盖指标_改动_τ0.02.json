@@ -1,0 +1,22 @@
+{
+  "tag": "改动_τ0.02",
+  "mesh_path": "/scratch/e1351071/zju_test_test/outputs/改动_truck/改动_τ0.02/sugarmesh_3Dgs7000_densityestim02_sdfnorm02_level03_decim1000000.ply",
+  "gs_output": "/scratch/e1351071/zju_test_test/outputs/基线_truck/3dgs_7k",
+  "n_test_views": 32,
+  "image_hw": [
+    1070,
+    1920
+  ],
+  "alpha_thresh": 0.5,
+  "n_gaussians": 1851298,
+  "mesh_faces": 1121525,
+  "averaged": {
+    "mesh_coverage": 0.7102186735719442,
+    "fg_fraction": 0.9916140101850033,
+    "hole_rate_over_fg": 0.28564684614162333,
+    "hole_rate_over_all": 0.2832979632075876,
+    "mesh_covers_fg": 0.7143531538583767
+  },
+  "elapsed_sec": 64.78984951972961,
+  "per_view_csv": "/scratch/e1351071/zju_test_test/outputs/改动_truck/评测/覆盖指标_逐视角_改动_τ0.02.csv"
+}

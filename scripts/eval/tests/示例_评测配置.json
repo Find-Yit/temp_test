@@ -1,0 +1,38 @@
+{
+  "shared": {
+    "source_path": "/tmp/syn_gs/source",
+    "gs_output": "/tmp/syn_gs/gs_output",
+    "iteration": 7000,
+    "ref_a": "/tmp/syn_gs/gs_output/point_cloud/iteration_7000/point_cloud.ply",
+    "cameras_json": "/tmp/syn_gs/gs_output/cameras.json",
+    "out_dir": "/tmp/runall/out",
+    "repo_root": "/scratch/e1351071/zju_test_test/repo/SuGaR",
+    "log": "/tmp/runall/log.txt"
+  },
+  "variants": [
+    {
+      "tag": "基线",
+      "mesh": "/tmp/syn_gs/mesh/球.ply",
+      "coarse_pt": "/tmp/syn_gs/coarse/合成coarse.pt"
+    },
+    {
+      "tag": "改动_抽取",
+      "mesh": "/tmp/syn_gs/mesh/球_抽取.ply",
+      "coarse_pt": "/tmp/syn_gs/coarse/合成coarse.pt"
+    }
+  ],
+  "metrics": [
+    "M1",
+    "M2",
+    "M3",
+    "M4",
+    "M5",
+    "M6"
+  ],
+  "options": {
+    "n_sample": 200000,
+    "lpips": 1,
+    "save_masks": false,
+    "fg_bbox_factor": 3.0
+  }
+}

@@ -1,0 +1,122 @@
+diff --git a/extract_mesh.py b/extract_mesh.py
+index 8652751..3ba03b9 100644
+--- a/extract_mesh.py
++++ b/extract_mesh.py
+@@ -39,9 +39,27 @@ if __name__ == "__main__":
+                         help='If True, just use centers of the gaussians to extract mesh.')
+     parser.add_argument('--use_marching_cubes', type=str2bool, default=False, 
+                         help='If True, use marching cubes to extract mesh.')
+-    parser.add_argument('--use_vanilla_3dgs', type=str2bool, default=False, 
++    parser.add_argument('--use_vanilla_3dgs', type=str2bool, default=False,
+                         help='If True, use vanilla 3DGS to extract mesh.')
+-    
++
++    # ----- Multi-view depth-consistency point filtering (阶段2a 改动, 默认关闭) -----
++    # 在 fg/bg 分离与 Poisson 之前，对表面采样点做多视角深度一致性投票剔点。
++    # 关闭(mv_filter=False)时提取流程与基线逐位一致。详见 sugar_extractors/mv_consistency_filter.py。
++    parser.add_argument('--mv_filter', type=str2bool, default=False,
++                        help='If True, run multi-view depth-consistency point filtering before Poisson.')
++    parser.add_argument('--mv_tau', type=float, default=0.02,
++                        help='Relative depth tolerance for consistency vote (COLMAP default is 0.01).')
++    parser.add_argument('--mv_min_consistent', type=int, default=2,
++                        help='Keep a point only if consistent votes >= this (ACMM uses 2).')
++    parser.add_argument('--mv_max_conflict', type=int, default=1,
++                        help='Keep a point only if free-space conflict votes <= this.')
++    parser.add_argument('--mv_n_ref_cams', type=int, default=30,
++                        help='Number M of reference cameras whose depth maps are cached.')
++    parser.add_argument('--mv_n_votes', type=int, default=0,
++                        help='Per-point votes K: 0 or >=M means use all M reference cameras.')
++    parser.add_argument('--mv_seed', type=int, default=0,
++                        help='Seed for reference-camera sampling (and per-point K sampling).')
++
+     args = parser.parse_args()
+     
+     # Call function
+diff --git a/sugar_extractors/coarse_mesh.py b/sugar_extractors/coarse_mesh.py
+index 414a0f2..9e0fc00 100644
+--- a/sugar_extractors/coarse_mesh.py
++++ b/sugar_extractors/coarse_mesh.py
+@@ -8,6 +8,9 @@ from sugar_scene.gs_model import GaussianSplattingWrapper
+ from sugar_scene.sugar_model import SuGaR
+ from sugar_utils.general_utils import str2bool
+ from sugar_utils.spherical_harmonics import SH2RGB
++from sugar_extractors.mv_consistency_filter import (
++    multiview_depth_consistency_filter, write_filter_stats,
++)
+ 
+ from rich.console import Console
+ 
+@@ -105,7 +108,27 @@ def extract_mesh_from_coarse_sugar(args):
+     use_centers_to_extract_mesh = args.use_centers_to_extract_mesh
+     use_marching_cubes = args.use_marching_cubes
+     use_vanilla_3dgs = args.use_vanilla_3dgs
+-            
++
++    # ----- Multi-view depth-consistency filtering config (阶段2a 改动, 默认关闭) -----
++    # 兼容 argparse.Namespace(extract_mesh.py) 与 AttrDict(dict)(train.py); 缺省即基线行为。
++    def _cfg(a, name, default):
++        if isinstance(a, dict):
++            return a.get(name, default)
++        return getattr(a, name, default)
++    mv_filter = _cfg(args, 'mv_filter', False)
++    mv_tau = _cfg(args, 'mv_tau', 0.02)
++    mv_min_consistent = _cfg(args, 'mv_min_consistent', 2)
++    mv_max_conflict = _cfg(args, 'mv_max_conflict', 1)
++    mv_n_ref_cams = _cfg(args, 'mv_n_ref_cams', 30)
++    mv_n_votes = _cfg(args, 'mv_n_votes', 0)
++    mv_seed = _cfg(args, 'mv_seed', 0)
++    mv_filter_stats = []  # 每个 surface_level 的剔点统计, 循环后统一落盘
++    CONSOLE.print("Multi-view depth-consistency filter:", mv_filter)
++    if mv_filter:
++        CONSOLE.print(f"  mv_tau={mv_tau} mv_min_consistent={mv_min_consistent} "
++                      f"mv_max_conflict={mv_max_conflict} mv_n_ref_cams={mv_n_ref_cams} "
++                      f"mv_n_votes={mv_n_votes} mv_seed={mv_seed}")
++
+     CONSOLE.print("-----Parameters-----")
+     CONSOLE.print("Source path:", source_path)
+     CONSOLE.print("Gaussian Splatting Checkpoint path:", gs_checkpoint_path)
+@@ -337,6 +360,30 @@ def extract_mesh_from_coarse_sugar(args):
+                 surface_colors = surface_levels_outputs[surface_level]['colors']
+                 surface_normals = surface_levels_outputs[surface_level]['normals']
+ 
++                # ----- 阶段2a 改动: Poisson 前多视角深度一致性剔点 (默认关闭) -----
++                # 关闭(mv_filter=False)时本分支完全不执行, 输出与基线逐位一致。
++                if mv_filter:
++                    keep_mask, mv_stats = multiview_depth_consistency_filter(
++                        sugar, surface_points,
++                        colors=surface_colors, normals=surface_normals,
++                        cameras=nerfmodel.training_cameras,
++                        n_ref_cams=mv_n_ref_cams, n_votes=mv_n_votes, tau=mv_tau,
++                        min_consistent=mv_min_consistent, max_conflict=mv_max_conflict,
++                        seed=mv_seed, surface_level=surface_level,
++                        save_ply_dir=mesh_output_dir,
++                        ply_prefix=("" if len(surface_levels) == 1
++                                    else "level" + str(surface_level).replace('.', '')),
++                    )
++                    mv_filter_stats.append(mv_stats)
++                    surface_points = surface_points[keep_mask]
++                    surface_colors = surface_colors[keep_mask]
++                    surface_normals = surface_normals[keep_mask]
++                    CONSOLE.print(
++                        f"[mv_filter] surface_level {surface_level}: "
++                        f"{mv_stats['剔点前点数']} -> {mv_stats['剔点后点数']} points "
++                        f"(removed {mv_stats['剔除点数']}, rate {mv_stats['剔除率']:.4f})"
++                    )
++
+                 if use_custom_bbox:
+                     CONSOLE.print("Using provided bounding box.")
+                     fg_bbox_min_tensor = torch.tensor(fg_bbox_min).to(sugar.device)
+@@ -520,7 +567,12 @@ def extract_mesh_from_coarse_sugar(args):
+                     o3d.io.write_triangle_mesh(sugar_mesh_path, decimated_o3d_mesh, write_triangle_uvs=True, write_vertex_colors=True, write_vertex_normals=True)
+                     CONSOLE.print("Mesh saved at", sugar_mesh_path)
+                     all_sugar_mesh_paths.append(sugar_mesh_path)
+-                    
++
++            # ----- 阶段2a 改动: 落盘多视角剔点统计 (仅当开启) -----
++            if mv_filter and len(mv_filter_stats) > 0:
++                _stats_json, _stats_txt = write_filter_stats(mv_filter_stats, mesh_output_dir)
++                CONSOLE.print(f"[mv_filter] Stats saved at {_stats_json} and {_stats_txt}")
++
+         else:
+             CONSOLE.print("\nWARNING: Using centers of gaussians to extract mesh.")
+             CONSOLE.print("Results will look bad, this is not the best way to extract a mesh.")

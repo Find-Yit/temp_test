@@ -1,0 +1,31 @@
+{
+  "tag": "基线",
+  "source_path": "/scratch/e1351071/zju_test_test/data/tandt/truck",
+  "gs_output": "/scratch/e1351071/zju_test_test/outputs/基线_truck/3dgs_7k",
+  "iteration": 7000,
+  "eval_interval": 8,
+  "n_test_views": 32,
+  "image_hw": [
+    546,
+    979
+  ],
+  "sh_degree": 3,
+  "lpips_backend": "lpipsPyTorch",
+  "seed": 0,
+  "note_nondeterminism": "CUDA 光栅化 atomicAdd 非确定; SuGaR trainer 无 seed -> 存在单次运行差异",
+  "vanilla_3dgs": {
+    "psnr": 23.922265768051147,
+    "ssim": 0.849422886967659,
+    "lpips": 0.20163614116609097
+  },
+  "coarse_pt": "/scratch/e1351071/zju_test_test/outputs/基线_truck/coarse/sugarcoarse_3Dgs7000_densityestim02_sdfnorm02/15000.pt",
+  "coarse_sugar": {
+    "psnr": 24.322837114334106,
+    "ssim": 0.8482140526175499,
+    "lpips": 0.21701154951006174
+  },
+  "n_coarse_gaussians": 424177,
+  "elapsed_sec": 42.09245562553406,
+  "per_view_csv": "/scratch/e1351071/zju_test_test/outputs/基线_truck/评测/渲染指标_逐视角_基线.csv",
+  "render_dir": "/scratch/e1351071/zju_test_test/outputs/基线_truck/评测/渲染图_基线"
+}

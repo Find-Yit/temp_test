@@ -1,0 +1,59 @@
+% appendix.tex — 附录
+\appendix
+\section{附录}
+
+\subsection{多视角深度一致性剔点的超参数}
+
+\begin{table}[H]
+\centering
+\caption{多视角深度一致性剔点的超参数}
+\label{tab:mv-hyperparams}
+\begin{tabular}{llp{7cm}}
+\toprule
+\textbf{符号} & \textbf{默认值} & \textbf{含义} \\
+\midrule
+$\tau$     & 0.02  & 相对深度容差，$|z_p - z_{\mathrm{map}}|/z_{\mathrm{map}} < \tau$ 即判一致 \\
+$k_{\min}$ & 2     & 保留所需的最少一致票数 \\
+$v_{\max}$ & 1     & 允许的最大空域冲突票数 \\
+$M$        & 30    & 参考相机抽样数（均匀抽取，\texttt{seed}=0） \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{算法伪代码}
+
+\begin{algorithm}[H]
+\SetKwInOut{Input}{输入}
+\SetKwInOut{Output}{输出}
+\SetKwFunction{Render}{RenderDepth}
+\SetKwFunction{Project}{Project}
+\SetKwFunction{GetDepth}{GetMapDepth}
+\caption{多视角深度一致性剔点（Multi-view Depth Consistency Filter）}
+\label{alg:mv-filter}
+\Input{表面点集 $\mathcal{P}$，SuGaR 模型，训练相机 $\mathcal{C}$，\\
+       超参 $\tau, k_{\min}, v_{\max}, M$}
+\Output{过滤后的点集 $\mathcal{P}'$}
+$\mathcal{C}_M \leftarrow$ 从 $\mathcal{C}$ 均匀抽样 $M$ 个相机（\texttt{seed}=0）\;
+\ForEach{$c_j \in \mathcal{C}_M$}{
+  $D_j \leftarrow$ \Render{SuGaR, $c_j$} \tcp*{缓存渲染深度图}
+}
+\ForEach{$p_i \in \mathcal{P}$}{
+  $n_{\mathrm{con}} \leftarrow 0$;\quad $n_{\mathrm{cfl}} \leftarrow 0$\;
+  \ForEach{$c_j \in \mathcal{C}_M$}{
+    $(u, v, z_p) \leftarrow$ \Project{$p_i$, $c_j$}\;
+    \If{$(u, v)$ 在视锥内}{
+      $z_{\mathrm{map}} \leftarrow D_j(u, v)$\;
+      \uIf{$|z_p - z_{\mathrm{map}}| < \tau \cdot z_{\mathrm{map}}$}{
+        $n_{\mathrm{con}} \leftarrow n_{\mathrm{con}} + 1$\;
+      }
+      \uElseIf{$z_p < z_{\mathrm{map}} - \tau \cdot z_{\mathrm{map}}$}{
+        $n_{\mathrm{cfl}} \leftarrow n_{\mathrm{cfl}} + 1$\;
+      }
+    }
+  }
+  \If{$n_{\mathrm{con}} \geq k_{\min}$ \textbf{且} $n_{\mathrm{cfl}} \leq v_{\max}$}{
+    将 $p_i$ 加入 $\mathcal{P}'$\;
+  }
+}
+\Return $\mathcal{P}'$\;
+\end{algorithm}

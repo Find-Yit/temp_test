@@ -1,0 +1,21 @@
+# 阶段 2a：主改动实现（多视角深度一致性剔点）
+
+## TL;DR
+在 repo/SuGaR/sugar_extractors/coarse_mesh.py 表面点采样后、fg/bg 分离与 Poisson 前，加入 multiview_depth_consistency_filter，
+通过 extract_mesh.py 新参数开关（默认关闭，关闭时输出与基线逐位一致）。先在冒烟产物上验证，再等基线 coarse 模型做 τ 扫描。
+
+## 实现规范
+- 新文件 repo/SuGaR/sugar_extractors/mv_consistency_filter.py：核心函数 + 统计落盘（剔点统计.json/.txt：每 surface_level 剔前/剔后点数、一致票/冲突票直方图）。
+- coarse_mesh.py 最小改动：读 config 中 mv_filter/mv_tau/mv_min_consistent/mv_max_conflict/mv_n_ref_cams/mv_n_votes/mv_seed，
+  在 surface points 得到后调用过滤器；同时把剔点前后的表面点云各存一份 .ply（中文名：表面点_剔点前.ply / 表面点_剔点后.ply）。
+- extract_mesh.py 增加对应 argparse 参数并透传。
+- 判据：对点 p，投影到相机 c 得深度 z_p 与像素 (u,v)；取渲染深度 z_map(u,v)（sugar.render_depth_and_normal 缓存，M 个相机均匀抽样 seed 固定）；
+  |z_p − z_map| < τ·z_map → 一致票；z_p < z_map − τ·z_map → 空域冲突票；视锥外/无效深度不计票。
+  保留：一致票 ≥ min_consistent(默认 2) 且 冲突票 ≤ max_conflict(默认 1)。默认 M=30、每点用全部 M 个相机（或随机 K=8）。
+- 与 COLMAP/ACMM/GaussianPro 归属对应写在 docstring 中。
+- 单元测试 scripts/tests/test_mv_filter.py：合成场景（球面点 + 明显漂浮点），验证漂浮点被剔、球面点保留 > 95%。
+
+## 验收（Fable）
+1. git diff --stat 只涉及 coarse_mesh.py、extract_mesh.py 与新文件；mv_filter=False 时输出 mesh V/F 与基线一致。
+2. 单元测试通过；冒烟数据上开关打开能跑通并产生 剔点统计.txt，剔除率在 (0, 50%)。
+3. 代码有 docstring 解释输入输出、假设与失败处理（题目要求能解释）。

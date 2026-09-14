@@ -1,0 +1,65 @@
+# SuGaR 6 小时考核总计划（2026-09-14）
+
+## TL;DR
+在 /scratch/e1351071/zju_test_test 内从零完成：3DGS(≤7k) → coarse SuGaR(≤15k) → Mesh 提取的基线，
+做一个进入训练/提取主流程的改动，跑 baseline vs modified + 1 个超参消融，产出 report.pdf 与可开源代码仓。
+分工：Fable 计划+验收；opus48-executor(max) 执行；opus46-writer 写报告；opus-executor(opus5) 查资料。
+所有代码/数据/权重/环境只放在本目录。
+
+## 机器事实（已实测）
+- GPU: NVIDIA H200 143GB, driver 575.57.08 (最高 CUDA 12.9), sm_90
+- 系统 nvcc 12.1 (/usr/local/cuda), gcc 11.4, Python 3.10.12 (/usr/bin/python3), 无 conda/curl/tmux/ninja
+- 网络: github.com / pypi.org 可达；用 wget，不用 curl
+- 磁盘: /scratch 剩 195G；内存 2TB；12 核
+
+## 阶段 0（并行，目标 ≤40 min）
+A. 下载代码 → ./repo/SuGaR（含 submodule gaussian-splatting、diff-gaussian-rasterization、simple-knn），
+   记录 commit hash 到 ./notes/COMMITS.md；下载一个小数据集到 ./data（优先 3DGS 官方 tandt_db.zip 的 db/playroom 或 tandt/truck；
+   若太慢则选 Mip-NeRF360 garden 或任何官方示例）。
+B. 环境：python3 -m venv ./venv；torch 2.x + cu121/cu126 匹配 nvcc 12.1；编译 diff-gaussian-rasterization、simple-knn；
+   pytorch3d（优先预编译 wheel，其次源码编译，TORCH_CUDA_ARCH_LIST=9.0）；open3d、plyfile、pymeshlab 等 SuGaR 依赖。
+   验收：python -c 导入全部通过，GPU 可用；写 ./notes/ENV.md（系统/Python/PyTorch/CUDA/GPU/关键依赖版本）。
+C. 调研：SuGaR 之后有哪些开源的直接改进（如 Gaussian Surfels、2DGS、GaussianPro、GOF、RaDe-GS、PGSR、Frosting…）
+   以及 SuGaR 仓库 issue 里常见的失败模式；输出 ./notes/SURVEY.md，给出 3 个"小改动、进入主流程、6h 可做"的候选，各附动机/假设/预估代价。
+
+## 阶段 1 基线（目标 ≤1.5h）
+train 3DGS 7k → coarse SuGaR (dn_consistency 或 sdf, ≤15k) → extract mesh → 输出 .ply/.obj + 渲染图。
+记录命令、seed、迭代数、墙钟、输出路径到 ./notes/RUNLOG.md。
+
+## 阶段 2 改动 + 对照 + 消融（目标 ≤2.5h）
+由 Fable 依据 SURVEY.md 定案后另写 plans/改动方案.txt。至少：baseline、modified(w1)、modified(w2)。
+指标：几何（Chamfer 到 3DGS 点云/网格拓扑统计）+ 渲染（测试视角 PSNR/SSIM）+ 对比图。
+
+## 阶段 3 报告 + 开源（目标 ≤1h）
+opus46-writer 写 report.md → pdf；README 含逐步命令；git init 仓库（不含数据/权重）。
+
+## Checklist
+- [x] 0A 代码与数据下载（SuGaR@7c10c4a；tandt/truck 251 图, db/playroom 225 图；已验收）
+- [x] 0B 环境可用（venv torch2.4.1+cu121, pytorch3d 0.7.8；Fable 复验 7/7 PASS）
+- [x] 0C 调研完成（推荐候选 A，方案见 plans/改动方案_多视角深度一致性剔点.txt）
+- [x] 1 基线跑通并有 mesh（truck：V=750841 F=1437272，4851 连通分量，总墙钟 23.8 min；Fable 复算一致）
+- [x] 2 改动 + 对照 + 消融
+- [ ] 3 报告 + 仓库
+
+## 【2026-09-14 用户补充规则】
+- 所有实验产物（图片、网格、数据文件、目录）一律用中文命名，例：outputs/基线_truck_3dgs_7k/、渲染对比_基线_vs_改动.png。
+- 所有数值结果除 CSV/JSON 外，都要另存一份 .txt（人类可读，中文键名）。
+- 环境装好后先跑"初始跑通实验"（小迭代数冒烟：3DGS 1k → coarse 1k → 提取 mesh），确认全链路可用后再跑正式基线。
+- 新增阶段 0D：opus5 调研评测维度/benchmark/指标（至少覆盖题目 PDF 提到的所有指标），输出 notes/评测方案调研.md。
+- [x] 0D 评测维度与指标调研（notes/评测方案调研.md；metrics.py 不可直接用，需自写评测脚本；SuGaR trainer 无 seed）
+- [x] 0E 评测脚本 M1–M6（自测 51/51；真实数据验证通过）
+
+## 【2026-09-14 用户决定】
+- 主改动方案已批准：plans/改动方案_多视角深度一致性剔点.txt。Frosting 对照仅时间有余时做。
+- 基线跑完后必须立刻对基线跑 M1–M6 评测并保存结果。
+- 新增 考核提交/ 文件夹（考核方要看的交付物）：
+  考核提交/网格/（基线与各改动的 .ply/.obj）、考核提交/指标/（所有 json+txt）、考核提交/可视化/（对比图）、
+  考核提交/日志/（RUNLOG、命令、环境）、考核提交/report.pdf。所有文件中文命名，产出后从 outputs/ 复制（不移动、不删除）。
+- 报告：方法节写入改动的动机、先例归属、算法描述、关键代码片段（opus4.6 负责）。
+- [x] 1b 基线评测 M1–M6（Fable 盲验参考B accuracy：median/p90/count 完全一致，mean 差 8% 源于执行者对 mesh 做了 bbox 裁剪；PASS）
+- [x] 2a 主改动实现（单测 6/6 Fable 复跑通过；diff +74/-4 + 新文件；冒烟上 τ=0.02 剔除率 0.89 偏高，需在真实基线上先测 τ 曲线）
+- [x] 2b 报告方法节初稿（13 页；代码片段待与真实实现同步、篇幅待精简）
+- 【用户 2026-09-14】报告保持精简：代码差异/修改细节/实验环境（原 2.1）一律不进报告，全部写入 GitHub 仓库 README.md；用户已手动删减 sec1_method.tex，任何人不得把删掉的内容加回去。
+- [x] 2d README.md 初稿（40KB；10 处【待补】待实验结束回填）
+- 【用户 2026-09-14】报告"失败案例"只写方法/超参层面（τ 剔除率曲线、τ 过小误剔薄结构→孔洞/completeness 下降、τ 过大漏剔漂浮物、不同 k/v 的影响等）；
+  代码/工程层面的现象（open3d Poisson 抽简非确定性、-c 尾斜杠、迭代计数语义等）不进报告，只放 README 已知问题。写作者与结果节必须遵守。

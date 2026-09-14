@@ -1,0 +1,22 @@
+% abstract.tex — 摘要
+\begin{abstract}
+3D Gaussian Splatting（3DGS）以显式高斯基元为场景表示，实现了高质量实时渲染，
+但其无组织的点云结构为表面网格（Mesh）提取带来了固有困难。
+SuGaR（Surface-Aligned Gaussian Splatting）通过表面对齐正则化与 Poisson 重建
+将高斯转化为三角网格，为渲染质量与几何可用性架起桥梁。
+
+本报告在 truck 场景上从零复现了
+3DGS（$\leq$\,7\,000 迭代）$\to$ Coarse SuGaR（$\leq$\,15\,000 迭代）
+$\to$ Mesh 提取的基线流程，
+并提出在 Poisson 重建前通过多视角深度一致性投票
+剔除跨视角不自洽的虚假表面点。
+通过基线与三组容差 $\tau\in\{0.05,\,0.02,\,0.01\}$ 的对照实验
+（共 4 次完整提取）验证效果：
+以 COLMAP 稀疏点云为参考，Chamfer 距离从 0.0531 降至 0.0390（$\tau{=}0.02$），
+连通分量数从 4{,}851 降至 2{,}690；
+代价是网格覆盖率从 92.9\% 降至 71.0\%。
+渲染指标不受影响（Coarse PSNR 24.32\,dB、SSIM 0.848），
+因改动仅作用于提取阶段。
+本报告分析了改动的收益、代价与失败案例，并讨论了后续改进方向。
+全部代码与复现命令已开源\footnote{\url{https://github.com/Find-Yit/temp_test}}。
+\end{abstract}

@@ -1,0 +1,61 @@
+[阶段 0E] 评测脚本 M1–M6 编写与自测（opus48-executor 执行）
+工作目录: /scratch/e1351071/zju_test_test ；只新增文件，未改动 repo/SuGaR 内任何现有文件（只 import），未删除任何文件，未 git commit。
+开始: 2026-09-14 ~11:39 UTC
+
+== 环境 ==
+source env.sh（venv torch 2.4.1+cu121 / pytorch3d 0.7.8 / open3d 0.18.0 / numpy 1.26.4）。
+额外安装（记录）: pip install --no-deps trimesh(5.1.0)（纯 python，numpy 仍 1.26.4）——供 M3 交叉验证，可选。
+lpips 包：未装。M1 默认用仓库内 gaussian_splatting.lpipsPyTorch(vgg)（与 SuGaR 自带 metrics.py 一致），首跑下载 vgg16(528MB)+lin(7KB) 权重到 scripts/eval/cache/。
+[环境事实] open3d OffscreenRenderer 在本节点 eglInitialize failed（无 EGL）且是硬崩溃不可 try/except → M6 改用 matplotlib(Poly3DCollection) 纯 CPU 兜底 + 可选 pytorch3d，默认 matplotlib。
+
+== 交付文件（scripts/eval/）==
+eval_common.py            共享: sys.path 装配 / seed / JSON+中文txt 落盘 / 相机中心场景尺度 / 稳健裁剪bbox / 距离统计 / CJK字体
+m1_render_metrics.py      M1 渲染 PSNR/SSIM/LPIPS（3DGS + coarse SuGaR，llffhold=8）
+m2_geometry.py            M2 几何 双向点到面/点到点 + Chamfer + F-score@τ（参考A 3DGS点云 / 参考B COLMAP）
+m3_topology.py            M3 拓扑 V/F/E/欧拉/连通分量/非流形边/边界边/孔洞/自交(限时子进程)/水密
+m4_coverage.py            M4 覆盖率 + 漏洞率（pytorch3d 光栅化 + 3DGS override_color=白得 alpha）
+m5_efficiency.py          M5 效率 解析计时JSON + 网格V/F/体积
+m6_visualize.py           M6 可视化 网格截图/误差热图/连通分量/渲染对比拼图（matplotlib）
+run_all_eval.py           汇总 M1–M6，baseline vs modified 对比表（配置或CLI）
+计时运行.sh               M5 计时/显存包装器（开始/结束/墙钟/退出码/峰值显存 本进程组+全卡）
+tests/                    synthetic_data.py, make_synthetic_gs.py, test_m2_m3.py, test_m1_m4.py, test_m5_m6.py, 运行全部自测.sh, 示例_评测配置.json
+输出规范: 每脚本同时写 <指标>_<tag>.json + <指标>_<tag>.txt（中文键）；逐视角写 CSV；图/掩码中文命名；全部 argparse，输入/输出路径可指定；seed 固定=0。
+
+== 合成数据单元自测（scripts/eval/tests/，全部 PASS）==
+test_m2_m3.py  20/20 PASS  （球: euler=2/1分量/水密/边界0；带洞球: 边界>0/孔洞1/非水密；两球: 2分量；
+                            M2: 同面参考 chamfer≈0、F@0.02≈1；偏移0.1 → accuracy≈0.10、chamfer≈0.10；裁剪有效；固定seed可复现）
+test_m5_m6.py  14/14 PASS  （计时运行.sh 墙钟>=1s；M5 解析计时+网格1520面；M6 四类图有效）
+test_m1_m4.py  17/17 PASS  （合成3DGS: GT=高斯自渲染 → M1 3DGS/coarse PSNR≈67、SSIM≈1、LPIPS≈2e-6、测试视角=2；
+                            M4 覆盖率∈(0,1)、漏洞率∈[0,1]、掩码concentric对齐 → 证明 pytorch3d↔3DGS 相机一致）
+
+== 真实数据验证（outputs/冒烟_truck，真实 truck 3DGS-500 + coarse 7100.pt + mesh 326097面）==
+M2: Chamfer_A(3DGS点云)=0.0528  Chamfer_B(COLMAP 136029点)=0.0594  两参考结论一致；
+    accuracy(参考→网格)均值 0.031 < completeness(网格→参考)均值 0.074；F@0.01 A=0.897 B=0.866；耗时 8.5s。COLMAP loader 读真实 points3D.bin 正常。
+M3: V=173043 F=326097 E=502439 欧拉=-3299 连通分量=1145（小分量1057）最大占比0.433 非流形边0 边界边26587 孔洞1259 非水密；
+    trimesh 交叉验证 欧拉=-3299 完全一致（V/E/F正确）；自交在 40s 超时被优雅跳过（见 DEVIATION-0E-1）。
+M5: 解析真实计时 冒烟_coarse 24.6s/3280MiB、冒烟_extract 286.3s/7022MiB；网格 12.5MiB；正常。
+M6: 3张图（截图/误差热图/连通分量），59s；误差热图正确显示漂浮碎块=高误差(红)。
+M1/M4（真实冒烟，GPU）: 见 outputs/改动开发_临时/真实验证/（后台运行中，结果并入 SELF_CHECK）。
+
+== DEVIATION ==
+[DEVIATION-0E-1] open3d get_self_intersecting_triangles 在大网格上极慢（326097面 >4.5min 被 timeout 杀，1520面也要~8s）。
+  处理: 不改指标定义；改为“带超时的隔离子进程”计算——小网格精确算出，大网格超过 --self_intersect_timeout(默认120s) 则标记“已跳过/超时”，
+  run_all 不再被卡死。单元测试(inline, 无 mesh_path)仍精确计算。已在 M3 txt/JSON 如实标注是否跳过及原因。
+[记录] M3 孔洞数(我: 边界边并查集连通分量=1259) 与 trimesh outline().entities(=3742) 定义不同：
+  后者在非流形边界顶点(2355个)处会把环拆成多段路径，故偏大。欧拉数二者一致，说明 V/E/F 正确。以并查集环数为准。
+[记录] fg_bbox_factor 默认 1.0（相机中心包围盒）；若相机近似共面导致某轴退化，裁剪 bbox 该轴自动改用网格范围（eval_common.robust_crop_bbox），避免 open3d crop 报错。
+
+== 追加: M1/M4 真实冒烟(iter=500) 与 阶段 1b 基线评测 ==
+M1(冒烟): 3DGS PSNR=19.95 SSIM=0.681 LPIPS=0.416; coarse PSNR=20.39 SSIM=0.703 LPIPS=0.397。
+M4(冒烟): 覆盖率=0.734 前景占比=0.9999 漏洞率(前景)=0.266。掩码 concentric 对齐(相机约定一致)。
+
+[阶段 1b] 对基线 truck 完整跑 M1–M6（真实数据）。一键: bash scripts/eval/跑基线评测.sh
+基线 mesh = outputs/基线_truck/mesh/sugarmesh_3Dgs7000_densityestim02_sdfnorm02_level03_decim1000000.ply (V=750841 F=1437272)
+M1: 3DGS-7k PSNR=23.92 SSIM=0.849 LPIPS=0.202; coarse PSNR=24.32 SSIM=0.848 LPIPS=0.217 (32测试视角) ~43s PASS
+M2: 参考A Chamfer=0.0326 comp=0.0495 acc=0.0156 F@0.01=0.946; 参考B(COLMAP) Chamfer=0.0531 comp=0.0819 acc=0.0242 F@0.01=0.888 ~11s PASS
+M3: V=746704 F=1437272 欧拉=-20204 分量=4851(小4823) 最大占比0.495 非流形边0 边界边96544 孔洞7970 非水密; 自交120s超时跳过 ~200s PASS
+M4: 覆盖率=0.929 前景=0.9916 漏洞率(前景)=0.0666 ~50s PASS
+M5: 3DGS7k 118.6s/6624MiB; coarse15k 950.6s/10098MiB; 提取 359.1s/8274MiB; 总1428.3s; 网格54.34MiB ~5s PASS
+M6: 网格截图/误差热图/连通分量/渲染对比×2 全部产出 ~90s PASS
+产物: outputs/基线_truck/评测/（评测汇总_基线.json/.txt）; 已复制到 考核提交/{指标,可视化}/。
+结论: M1–M6 在基线真实数据上全部 PASS, 无失败项。完成时间 2026-09-14 ~12:29 UTC。

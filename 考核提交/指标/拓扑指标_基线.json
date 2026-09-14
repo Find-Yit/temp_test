@@ -1,0 +1,43 @@
+{
+  "tag": "基线",
+  "mesh_path": "/scratch/e1351071/zju_test_test/outputs/基线_truck/mesh/sugarmesh_3Dgs7000_densityestim02_sdfnorm02_level03_decim1000000.ply",
+  "topology": {
+    "V": 746704,
+    "F": 1437272,
+    "E": 2204180,
+    "euler": -20204,
+    "n_components": 4851,
+    "max_component_faces": 711886,
+    "max_component_ratio": 0.49530360293667447,
+    "top5_component_faces": [
+      711886,
+      175893,
+      111123,
+      102126,
+      51541
+    ],
+    "n_small_components_lt_0.1pct": 4823,
+    "non_manifold_edges": 0,
+    "boundary_edges": 96544,
+    "non_manifold_vertices": 15001,
+    "holes_boundary_loops": 7970,
+    "is_edge_manifold": true,
+    "is_vertex_manifold": false,
+    "is_watertight": false,
+    "degenerate_triangles": 0,
+    "self_intersect_skipped": true,
+    "self_intersect_sec": 120.34528017044067,
+    "self_intersect_skip_reason": "自交计算超过 120s 超时",
+    "self_intersecting_pairs": null,
+    "self_intersecting_triangles": null
+  },
+  "trimesh_crosscheck": {
+    "trimesh_available": true,
+    "V": 750841,
+    "F": 1437272,
+    "euler_number": -20204,
+    "is_watertight": false,
+    "boundary_loops": 21190
+  },
+  "elapsed_sec": 201.56116890907288
+}

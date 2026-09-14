@@ -1,0 +1,4 @@
+2026-09-14 11:15:52 UTC  [0C] SURVEY.md 完成
+  来源: SuGaR README(本地 commit 7c10c4ae) + GitHub issues + 9 篇后续工作官网/仓库
+  推荐候选: A = Poisson 前多视角深度一致性剔点 (coarse_mesh.py, 超参 tau)
+  [DEVIATION] 任务里提到的 cleaning_quantile 在 SuGaR 本 commit 不存在(属 Frosting), 已在 SURVEY.md 二节注明

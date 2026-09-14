@@ -1,0 +1,24 @@
+==================== 阶段1 基线汇总 (tandt/truck) ====================
+场景: tandt/truck (251图, --eval llffhold=8 → 219训练/32测试)
+SuGaR commit: 7c10c4ae4a267dece512f5c7f40ed212a0a2ab44
+seed: 0    GPU: NVIDIA H200 143GB 单卡 (gpu=0)
+流水线: 3DGS 7000it → coarse dn_consistency (num_iterations=15000, 真实步≈8000) → extract_mesh (surface_level=0.3, poisson_depth=10默认, vertices_density_quantile=0.1默认, decimation_target=1e6)
+
+---- 各阶段 墙钟 / 峰值显存 / 退出码 ----
+[训练3DGS_7k] 墙钟=118.633s (1.98 min)  峰值显存(本组)=6624 MiB / 全卡=6873 MiB  退出码=0
+[coarse_dn_15k] 墙钟=950.633s (15.84 min)  峰值显存(本组)=10098 MiB / 全卡=19726 MiB  退出码=0
+[提取mesh] 墙钟=359.079s (5.98 min)  峰值显存(本组)=8274 MiB / 全卡=15311 MiB  退出码=0
+
+总墙钟: 1428.345 s (23.81 min)    峰值显存(全卡): 19726 MiB
+
+---- 产物 ----
+3DGS ckpt: /scratch/e1351071/zju_test_test/outputs/基线_truck/3dgs_7k/point_cloud/iteration_7000/point_cloud.ply (437.85 MB)
+coarse .pt: /scratch/e1351071/zju_test_test/outputs/基线_truck/coarse/sugarcoarse_3Dgs7000_densityestim02_sdfnorm02/15000.pt (286.41 MB)
+
+---- mesh (顶点/面/体积) ----
+sugarmesh_3Dgs7000_densityestim02_sdfnorm02_level03_decim1000000.ply : V=750841  F=1437272  (54.34 MB)
+
+---- 表面采样点云 (提取阶段, 供阶段2改动对比) ----
+表面采样点云_全部_level03.ply : 点数=10000197  (486.38 MB)
+表面采样点云_前景_level03.ply : 点数=7405147  (360.17 MB)
+

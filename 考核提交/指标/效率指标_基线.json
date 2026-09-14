@@ -1,0 +1,56 @@
+{
+  "tag": "基线",
+  "stages": [
+    {
+      "stage": "coarse_dn_15k",
+      "command": "python scripts/run_coarse_dn.py -s data/tandt/truck -c outputs/基线_truck/3dgs_7k -i 7000 -o outputs/基线_truck/coarse --num_iterations 15000 --eval True",
+      "gpu": 0,
+      "start_human": "2026-09-14 12:00:02",
+      "end_human": "2026-09-14 12:15:53",
+      "wall_seconds": 950.633,
+      "return_code": 0,
+      "peak_mem_process_group_MiB": 10098,
+      "peak_mem_whole_gpu_MiB": 19726,
+      "sample_interval_sec": 5.0,
+      "_source": "/scratch/e1351071/zju_test_test/outputs/基线_truck/计时/计时_coarse_dn_15k.json"
+    },
+    {
+      "stage": "提取mesh",
+      "command": "python scripts/run_extract_mesh.py -s data/tandt/truck -c outputs/基线_truck/3dgs_7k -i 7000 -m outputs/基线_truck/coarse/sugarcoarse_3Dgs7000_densityestim02_sdfnorm02/15000.pt -l 0.3 -d 1000000 -o outputs/基线_truck/mesh --surfpts_dir outputs/基线_truck/mesh --eval True",
+      "gpu": 0,
+      "start_human": "2026-09-14 12:15:55",
+      "end_human": "2026-09-14 12:21:54",
+      "wall_seconds": 359.079,
+      "return_code": 0,
+      "peak_mem_process_group_MiB": 8274,
+      "peak_mem_whole_gpu_MiB": 15311,
+      "sample_interval_sec": 5.0,
+      "_source": "/scratch/e1351071/zju_test_test/outputs/基线_truck/计时/计时_提取mesh.json"
+    },
+    {
+      "stage": "训练3DGS_7k",
+      "command": "python repo/SuGaR/gaussian_splatting/train.py -s data/tandt/truck -m outputs/基线_truck/3dgs_7k --iterations 7000 --save_iterations 7000 --test_iterations 7000 --eval --quiet",
+      "gpu": 0,
+      "start_human": "2026-09-14 11:57:34",
+      "end_human": "2026-09-14 11:59:33",
+      "wall_seconds": 118.633,
+      "return_code": 0,
+      "peak_mem_process_group_MiB": 6624,
+      "peak_mem_whole_gpu_MiB": 6873,
+      "sample_interval_sec": 5.0,
+      "_source": "/scratch/e1351071/zju_test_test/outputs/基线_truck/计时/计时_训练3DGS_7k.json"
+    }
+  ],
+  "total_wall_seconds": 1428.345,
+  "peak_mem_process_group_MiB": 10098,
+  "peak_mem_whole_gpu_MiB": 19726,
+  "mesh": {
+    "path": "/scratch/e1351071/zju_test_test/outputs/基线_truck/mesh/sugarmesh_3Dgs7000_densityestim02_sdfnorm02_level03_decim1000000.ply",
+    "vertices": 750841,
+    "faces": 1437272,
+    "file_bytes": 56977754,
+    "file_MiB": 54.3382
+  },
+  "extra_files": [],
+  "elapsed_sec": 3.8788790702819824
+}

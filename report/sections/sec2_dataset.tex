@@ -1,0 +1,51 @@
+% sec2_dataset.tex — 第2节 数据集与评测协议
+\section{数据集与评测协议}
+
+\subsection{数据来源与划分}
+
+本实验使用 3DGS~\cite{kerbl20233d} 官方发布的 Tanks \& Temples 数据包中的
+\textbf{truck} 场景。该数据集由 COLMAP~\cite{schoenberger2016sfm}
+完成结构化运动恢复（Structure from Motion, SfM）与稀疏三维重建，
+提供已标定内外参的多视角图像及稀疏三维点云。
+训练与测试视角按 3DGS 标准划分 \texttt{llffhold=8}：
+每隔~8 张取~1 张作为测试视角，其余为训练视角。
+表~\ref{tab:data} 汇总了数据集概况。
+
+\begin{table}[H]
+\centering
+\caption{数据集概况}
+\label{tab:data}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{场景} & \textbf{图像总数} & \textbf{训练视角} & \textbf{测试视角} & \textbf{COLMAP 稀疏点数} \\
+\midrule
+truck & 251 & 219 & 32 & 136{,}029 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{训练预算与提取参数}
+
+基线流程各阶段的预算设置如下：
+\begin{itemize}[nosep]
+  \item \textbf{3DGS 预训练}：7{,}000 迭代，随机种子~0；
+  \item \textbf{Coarse SuGaR 训练}：\texttt{num\_iterations}=15{,}000
+        （迭代计数器从~7{,}000 起，实际优化约~8{,}000 步），
+        采用密度估计 + 深度--法向一致性（dn\_consistency）正则；
+  \item \textbf{Mesh 提取}：\texttt{surface\_level}=0.3，
+        Screened Poisson~\cite{kazhdan2006poisson} 八叉树深度~10，
+        顶点密度分位数裁剪阈值~0.1，抽简目标顶点数~1{,}000{,}000。
+\end{itemize}
+
+\subsection{评测协议}
+
+几何评测采用\textbf{双参考}比较方案：
+参考~A 为 3DGS 训练后的高斯中心点云（bbox 裁剪后~284{,}309 点），
+参考~B 为 COLMAP 稀疏点云（bbox 裁剪后~56{,}988 点）。
+裁剪区域由训练相机中心的轴对齐包围盒定义
+（对角线长约~13.34 场景坐标单位）。
+从网格表面均匀采样~1{,}000{,}000 个点，
+随机种子固定为~0，
+计算精度（Accuracy）、完整度（Completeness）、Chamfer 距离与
+F-score（阈值取场景尺度对角线的~0.5\%、1\%、2\%）。
+渲染指标（PSNR、SSIM、LPIPS）在全部~32 个测试视角上计算并取均值。

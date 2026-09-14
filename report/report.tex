@@ -1,0 +1,94 @@
+% !TEX program = xelatex
+% report.tex — 主文件
+% 编译方式: xelatex (tectonic 或 XeLaTeX 均可)
+\documentclass[12pt, a4paper]{article}
+
+%% ===== 中文支持 =====
+\usepackage{xeCJK}
+\usepackage{fontspec}
+
+% 字体路径（相对于编译目录，指向 assets/fonts/）
+\setCJKmainfont[
+  Path = ../assets/fonts/,
+  BoldFont = NotoSerifCJKsc-Bold.otf
+]{NotoSerifCJKsc-Regular.otf}
+\setCJKsansfont[
+  Path = ../assets/fonts/,
+  BoldFont = NotoSansCJKsc-Bold.otf
+]{NotoSansCJKsc-Regular.otf}
+\setCJKmonofont[
+  Path = ../assets/fonts/
+]{NotoSansCJKsc-Regular.otf}
+
+%% ===== 常用宏包 =====
+\usepackage{geometry}
+\geometry{left=2.5cm, right=2.5cm, top=2.8cm, bottom=2.8cm}
+
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{amsmath, amssymb}
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks = true,
+  linkcolor  = blue!60!black,
+  citecolor  = green!50!black,
+  urlcolor   = blue!70!black,
+  pdfauthor  = {待填},
+  pdftitle   = {从 3D Gaussian Splatting 到 Mesh：SuGaR 的快速复现、改动与实验分析}
+}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage[ruled,linesnumbered,vlined]{algorithm2e}
+\SetAlgorithmName{算法}{算法}{算法列表}
+
+%% ===== 自定义命令 =====
+% \todo 标记待填内容
+\newcommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
+% 占位数字
+\newcommand{\placeholder}[1]{\textcolor{red}{\textbf{（待填#1）}}}
+
+%% ===== 代码高亮设置 =====
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue},
+  commentstyle=\color{green!50!black},
+  stringstyle=\color{red!60!black},
+  showstringspaces=false
+}
+
+%% ===== 标题信息 =====
+\title{\textbf{从 3D Gaussian Splatting 到 Mesh：\\SuGaR 的快速复现、改动与实验分析}}
+\author{\todo{鲍明杨}}
+\date{2026 年 9 月 14 日}
+
+%% ===== 正文 =====
+\begin{document}
+\maketitle
+
+% ---- 摘要 ----
+\input{sections/abstract}
+
+% ---- 正文 ----
+\input{sections/sec1_method}
+\input{sections/sec2_dataset}
+\input{sections/sec3_results}
+\input{sections/sec4_conclusion}
+
+% ---- 参考文献 ----
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+% ---- 附录 ----
+\input{sections/appendix}
+
+\end{document}

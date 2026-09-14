@@ -1,0 +1,30 @@
+{
+  "tag": "改动_τ0.01",
+  "stages": [
+    {
+      "stage": "提取mesh_τ0.01",
+      "command": "python /home/svu/e1351071/tmp/claude-25053/-scratch-e1351071-zju-test-test/9320879a-bea6-43e7-9d8e-0c925d0fb18d/scratchpad/run_extract_repo.py -s /scratch/e1351071/zju_test_test/data/tandt/truck -c /scratch/e1351071/zju_test_test/outputs/基线_truck/3dgs_7k -i 7000 -m /scratch/e1351071/zju_test_test/outputs/基线_truck/coarse/sugarcoarse_3Dgs7000_densityestim02_sdfnorm02/15000.pt -l 0.3 -d 1000000 -o /scratch/e1351071/zju_test_test/outputs/改动_truck/改动_τ0.01 --mv_filter True --mv_tau 0.01 --mv_min_consistent 2 --mv_max_conflict 1 --mv_n_ref_cams 30 --mv_n_votes 0 --mv_seed 0 --seed 0",
+      "gpu": 0,
+      "start_human": "2026-09-14 12:53:19",
+      "end_human": "2026-09-14 12:57:14",
+      "wall_seconds": 234.865,
+      "return_code": 0,
+      "peak_mem_process_group_MiB": 8274,
+      "peak_mem_whole_gpu_MiB": 8283,
+      "sample_interval_sec": 2.0,
+      "_source": "/scratch/e1351071/zju_test_test/outputs/改动_truck/改动_τ0.01/计时_提取mesh_τ0.01.json"
+    }
+  ],
+  "total_wall_seconds": 234.865,
+  "peak_mem_process_group_MiB": 8274,
+  "peak_mem_whole_gpu_MiB": 8283,
+  "mesh": {
+    "path": "/scratch/e1351071/zju_test_test/outputs/改动_truck/改动_τ0.01/sugarmesh_3Dgs7000_densityestim02_sdfnorm02_level03_decim1000000.ply",
+    "vertices": 457494,
+    "faces": 890054,
+    "file_bytes": 34903222,
+    "file_MiB": 33.2863
+  },
+  "extra_files": [],
+  "elapsed_sec": 3.973123550415039
+}
